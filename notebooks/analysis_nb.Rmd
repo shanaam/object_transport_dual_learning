@@ -1,0 +1,18 @@
+---
+title: "Object Transport Analysis"
+author: "Shanaa Modchalingam"
+date: '2023'
+output: 
+  html_notebook:
+    toc: true
+    toc_float: true
+    number_sections: true
+    df_print: paged
+    
+---
+
+```{r setup, include=FALSE, warning=FALSE}
+rm(list = ls()) # clean environment
+
+source("src/helper_funcs.R")
+```

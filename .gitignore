@@ -40,3 +40,6 @@ vignettes/*.pdf
 
 # Everything in the data folder
 data/
+
+# Any notebook html files
+*.html
