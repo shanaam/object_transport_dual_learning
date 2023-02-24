@@ -77,8 +77,8 @@ load_trackerholderobject_csv <- function(path, ppt) {
 ## TESTING ##
 exp_index <- 1
 
-##### Single Rotation Experiments #####
-make_single_rot_file <- function(exp_index) {
+##### All Experiments #####
+make_per_frame_files <- function(exp_index) {
   path <- paste(raw_dir_path, exp_versions[exp_index], sep = "/")
   
   # loop through the files in path
@@ -165,30 +165,24 @@ make_single_rot_file <- function(exp_index) {
     object_track_df <- object_track_df %>% 
       mutate(norm_speed = smoothed_speed / max_smoothed_speed)
 
-    # per trial, find the first time the smoothed speed is greater than 0.1
+    # per trial, find the first time the normalized speed is >= 0.20
     object_track_df <- object_track_df %>% 
       group_by(trial_num) %>% 
-      mutate(start_move_event = norm_speed >= 0.15 &
-               !duplicated(norm_speed >= 0.15))
+      mutate(start_move_event = norm_speed >= 0.20 &
+               !duplicated(norm_speed >= 0.20))
 
     # save the file
     fwrite(object_track_df, file = paste(new_dir_path, "object_track_df.csv", sep = "/"))
   }
 }
 
-##### Dual 30 Rotation Experiments #####
-
-
-##### Dual 60 Rotation Experiments #####
-
-
 ##### Main #####
 
 # print(Sys.time())
 # 
-# make_single_rot_file(1)
-# make_single_rot_file(2)
-# make_single_rot_file(3)
+# make_per_frame_files(1)
+# make_per_frame_files(2)
+# make_per_frame_files(3)
 # 
 # print(Sys.time())
 
@@ -196,21 +190,16 @@ make_single_rot_file <- function(exp_index) {
 make_files_parallel <- function() {
   require(future)
 
-  res1 %<-% make_single_rot_file(1) %seed% TRUE
-  res2 %<-% make_single_rot_file(2) %seed% TRUE
-  res3 %<-% make_single_rot_file(3) %seed% TRUE
+  res1 %<-% make_per_frame_files(1) %seed% TRUE
+  res2 %<-% make_per_frame_files(2) %seed% TRUE
+  res3 %<-% make_per_frame_files(3) %seed% TRUE
 }
 
 plan(multisession)
 make_files_parallel()
 
 ##### Test #####
-
-# make a range from 139 - 149 (rotated trials)
-rotated_trials <- seq(139, 149, 1)
-
-
-for (trial in rotated_trials){
+plot_trials <- function(trial){
   # plot the velocity of one trial over time
   trial_df <- object_track_df %>% 
     filter(trial_num == trial) 
@@ -220,23 +209,41 @@ for (trial in rotated_trials){
     geom_line() +
     theme_bw() +
     labs(x = "Time (s)", y = "Speed (normalized)", title = "Speed of Cursor Over Time")
-
+  
   # add a vertical line where start_move_event = TRUE
   f <- f + geom_vline(aes(xintercept = x.time), data = trial_df %>% filter(start_move_event == TRUE), color = "red")
   
   # save the plot
   ggsave(filename = paste("trial_", trial, "_speed.png", sep = ""), plot = f, path = "plots")
-
+  
   # plot the x and z positions of the cursor
   f2 <- trial_df %>% 
     ggplot(aes(x = pos_x, y = pos_z, color = norm_speed)) +
     geom_point() +
     theme_bw() +
     labs(x = "X Position (m)", y = "Z Position (m)", title = "Cursor Position Over Time")
-
+  
   # add a dot where start_move_event = TRUE
   f2 <- f2 + geom_point(aes(x = pos_x, y = pos_z), data = trial_df %>% filter(start_move_event == TRUE), color = "red", size = 3)
   
   # save the plot
   ggsave(filename = paste("trial_", trial, "_pos.png", sep = ""), plot = f2, path = "plots")
+  
 }
+
+do_test <- function(){
+  # make a range from 139 - 149 (rotated trials)
+  rotated_trials <- seq(139, 158, 1)
+
+  for (trial in rotated_trials){
+    var <- paste("P", trial, sep = "")
+      
+    assign(var, future({plot_trials(trial)}))
+  }
+}
+
+exp_index <- 3
+path <- paste(raw_dir_path, exp_versions[exp_index], sep = "/")
+ppt <- "10"
+
+# do_test()
