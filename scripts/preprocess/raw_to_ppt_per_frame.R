@@ -73,7 +73,16 @@ make_single_rot_file <- function(exp_index) {
 
     # load the cursor object tracker
     cursor_df <- load_cursorobjecttracker_csv(path, ppt)
-
+    
+    # we need to use data table to do non-equi joins
+    setDT(trial_df); setDT(cursor_df) # converting to data.table in place
+    
+    cursor_df <- cursor_df[trial_df, on = .(time >= start_time, time < end_time), 
+                           nomatch = 0, .(pos_x, pos_y, pos_z, x.time, 
+                                          start_time, end_time, trial_num, 
+                                          block_num, trial_num_in_block, targetAngle,
+                                          type, cursor_rotation, hand, pick_up_time,
+                                          obj_shape, ppid)]
 
   }
 }
