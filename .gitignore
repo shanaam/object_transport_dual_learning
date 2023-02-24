@@ -38,8 +38,9 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 
-# Everything in the data folder
+# Folders
 data/
+plots/
 
 # Any notebook html files
 *.html
