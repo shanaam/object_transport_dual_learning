@@ -21,11 +21,9 @@ vector_confint <- function(vector, interval = 0.95) {
   return(error)
 }
 
-# atan2 using x and y coordinates
-applyAtan2 <- function(df) {
-  x <- df[1] - df[3]
-  y <- df[2] - df[4]
-  ang <- df[5] * -1 * pi / 180 # convert to rads
+# atan2 using x and y
+atan2_2d <- function(x, y, target_ang) {
+  ang <- target_ang * -1 * pi / 180 # convert to rads
 
   x_r <- (x * cos(ang)) - (y * sin(ang))
   y_r <- (x * sin(ang)) + (y * cos(ang))

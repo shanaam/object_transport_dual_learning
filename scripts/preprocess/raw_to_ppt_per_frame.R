@@ -109,6 +109,45 @@ make_per_frame_files <- function(exp_index) {
       mutate(step_num = case_when(x.time < step_time ~ 0,
                                   TRUE ~ 1))
 
+    # keep only rows where step_num = 0
+    hand_track_df <- hand_track_df %>% 
+      filter(step_num == 0)
+
+    # remove the step_num column
+    hand_track_df$step_num <- NULL
+
+    # remove rows where type = "instruction"
+    hand_track_df <- hand_track_df %>% filter(type != "instruction")
+
+    # remove the first row of each trial -- this is always set to 0
+    hand_track_df <- hand_track_df %>% 
+      group_by(trial_num) %>% 
+      slice(-1)
+             
+    hand_track_df <- hand_track_df %>% 
+      group_by(trial_num) %>% 
+      mutate(first_pos_x = first(pos_x),
+             first_pos_z = first(pos_z),
+             pos_x = pos_x - first_pos_x,
+             pos_z = pos_z - first_pos_z,
+             dist = sqrt(pos_x^2 + pos_z^2),
+             pos_x_change = pos_x - lag(pos_x),
+             pos_z_change = pos_z - lag(pos_z),
+             angle = atan2_2d(pos_x, pos_z, targetAngle),
+             angle_change = atan2_2d(pos_x_change, pos_z_change, targetAngle),
+             angle_2nd_deriv = angle_change - lag(angle_change),
+             abs_angle_2nd_deriv = abs(angle_2nd_deriv),
+             smoothed_abs_angle_2nd_deriv = rollmean(abs_angle_2nd_deriv, 5, fill = NA),
+             pos_change_dist = sqrt((pos_x_change)^2 + (pos_z_change)^2),
+             dist_change = dist - lag(dist),
+             time_change = x.time - lag(x.time),
+             speed = abs(pos_change_dist / time_change),
+             smoothed_speed = rollmean(speed, 5, fill = NA),
+             max_smoothed_speed = max(smoothed_speed, na.rm = TRUE),
+             norm_speed = smoothed_speed / max_smoothed_speed,
+             start_move_event = norm_speed >= 0.20 &
+               !duplicated(norm_speed >= 0.20))
+
     # save the file
     new_dir_path <- paste(processed_dir_path, "/", exp_short[exp_index], "_", ppt, sep = "")
     create_dir(new_dir_path)
@@ -132,43 +171,29 @@ make_per_frame_files <- function(exp_index) {
     object_track_df <- object_track_df %>% 
       group_by(trial_num) %>% 
       slice(-1)
-
-    # calculate the distance using pos_x and pos_z
-    object_track_df <- object_track_df %>% 
-      mutate(dist = sqrt(pos_x^2 + pos_z^2))
-    
-    # calculate the magnitude of the change in position
-    object_track_df <- object_track_df %>% 
-      mutate(pos_change = sqrt((pos_x - lag(pos_x))^2 + (pos_z - lag(pos_z))^2))
-
-    # add a column for the change in dist, group by trial_num
+             
     object_track_df <- object_track_df %>% 
       group_by(trial_num) %>% 
-      mutate(dist_change = dist - lag(dist),
-             time_change = x.time - lag(x.time))
-
-    # add a column for speed (dist_change / time_change)
-    object_track_df <- object_track_df %>% 
-      mutate(speed = abs(pos_change / time_change))
-
-    # add a column for smoothed velocity
-    object_track_df <- object_track_df %>% 
-      group_by(trial_num) %>% 
-      mutate(smoothed_speed = rollmean(speed, 5, fill = NA))
-    
-    # add a column that is the maximum smoothed speed
-    object_track_df <- object_track_df %>% 
-      group_by(trial_num) %>% 
-      mutate(max_smoothed_speed = max(smoothed_speed, na.rm = TRUE))
-
-    # add a normalized speed column
-    object_track_df <- object_track_df %>% 
-      mutate(norm_speed = smoothed_speed / max_smoothed_speed)
-
-    # per trial, find the first time the normalized speed is >= 0.20
-    object_track_df <- object_track_df %>% 
-      group_by(trial_num) %>% 
-      mutate(start_move_event = norm_speed >= 0.20 &
+      mutate(first_pos_x = first(pos_x),
+             first_pos_z = first(pos_z),
+             pos_x = pos_x - first_pos_x,
+             pos_z = pos_z - first_pos_z,
+             dist = sqrt(pos_x^2 + pos_z^2),
+             pos_x_change = pos_x - lag(pos_x),
+             pos_z_change = pos_z - lag(pos_z),
+             angle = atan2_2d(pos_x, pos_z, targetAngle),
+             angle_change = atan2_2d(pos_x_change, pos_z_change, targetAngle),
+             angle_2nd_deriv = angle_change - lag(angle_change),
+             abs_angle_2nd_deriv = abs(angle_2nd_deriv),
+             smoothed_abs_angle_2nd_deriv = rollmean(abs_angle_2nd_deriv, 5, fill = NA),
+             pos_change_dist = sqrt((pos_x_change)^2 + (pos_z_change)^2),
+             dist_change = dist - lag(dist),
+             time_change = x.time - lag(x.time),
+             speed = abs(pos_change_dist / time_change),
+             smoothed_speed = rollmean(speed, 5, fill = NA),
+             max_smoothed_speed = max(smoothed_speed, na.rm = TRUE),
+             norm_speed = smoothed_speed / max_smoothed_speed,
+             start_move_event = norm_speed >= 0.20 &
                !duplicated(norm_speed >= 0.20))
 
     # save the file
@@ -205,26 +230,42 @@ plot_trials <- function(trial){
     filter(trial_num == trial) 
   
   f <- trial_df %>% 
-    ggplot(aes(x = x.time, y = norm_speed)) +
-    geom_line() +
+    ggplot(aes(x = x.time, y = angle_change)) +
+    geom_line(color = "purple", alpha = 0.2) +
+    geom_line(aes(x = x.time, y = angle), color = "blue", alpha = 0.2) +
+    geom_line(aes(x = x.time, y = angle_2nd_deriv), color = "red", alpha = 0.2) +
+    geom_line(aes(x = x.time, y = smoothed_abs_angle_2nd_deriv), color = "green", alpha = 1) +
     theme_bw() +
     labs(x = "Time (s)", y = "Speed (normalized)", title = "Speed of Cursor Over Time")
   
   # add a vertical line where start_move_event = TRUE
-  f <- f + geom_vline(aes(xintercept = x.time), data = trial_df %>% filter(start_move_event == TRUE), color = "red")
+  f <- f + geom_vline(aes(xintercept = x.time), data = trial_df %>% filter(start_move_event == TRUE), color = "grey")
   
   # save the plot
   ggsave(filename = paste("trial_", trial, "_speed.png", sep = ""), plot = f, path = "plots")
   
+
+
+
   # plot the x and z positions of the cursor
   f2 <- trial_df %>% 
-    ggplot(aes(x = pos_x, y = pos_z, color = norm_speed)) +
+    ggplot(aes(x = pos_x, y = pos_z, color = angle_2nd_deriv)) +
     geom_point() +
     theme_bw() +
     labs(x = "X Position (m)", y = "Z Position (m)", title = "Cursor Position Over Time")
   
+  # use a color palette that highlights 0
+  f2 <- f2 + scale_color_gradient(low = "blue", high = "red")
+  
   # add a dot where start_move_event = TRUE
   f2 <- f2 + geom_point(aes(x = pos_x, y = pos_z), data = trial_df %>% filter(start_move_event == TRUE), color = "red", size = 3)
+
+  # add vertical and horizontal lines at the origin
+  f2 <- f2 + geom_vline(xintercept = 0, color = "black", linetype = "dashed")
+  f2 <- f2 + geom_hline(yintercept = 0, color = "black", linetype = "dashed")
+
+  # set x and y limits
+  f2 <- f2 + xlim(-0.20, 0.20) + ylim(-0.05, 0.20)
   
   # save the plot
   ggsave(filename = paste("trial_", trial, "_pos.png", sep = ""), plot = f2, path = "plots")
@@ -242,7 +283,7 @@ do_test <- function(){
   }
 }
 
-exp_index <- 3
+exp_index <- 2
 path <- paste(raw_dir_path, exp_versions[exp_index], sep = "/")
 ppt <- "10"
 
