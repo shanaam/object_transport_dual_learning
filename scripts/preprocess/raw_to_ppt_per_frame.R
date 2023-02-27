@@ -182,7 +182,7 @@ make_per_frame_files <- function(exp_index) {
              pos_x_change = pos_x - lag(pos_x),
              pos_z_change = pos_z - lag(pos_z),
              angle = atan2_2d(pos_x, pos_z, targetAngle),
-             angle_change = atan2_2d(pos_x_change, pos_z_change, targetAngle),
+             angle_change = angle - lag(angle),
              angle_2nd_deriv = angle_change - lag(angle_change),
              abs_angle_2nd_deriv = abs(angle_2nd_deriv),
              smoothed_abs_angle_2nd_deriv = rollmean(abs_angle_2nd_deriv, 5, fill = NA),
@@ -235,18 +235,44 @@ plot_trials <- function(trial){
     geom_line(aes(x = x.time, y = angle), color = "blue", alpha = 0.2) +
     geom_line(aes(x = x.time, y = angle_2nd_deriv), color = "red", alpha = 0.2) +
     geom_line(aes(x = x.time, y = smoothed_abs_angle_2nd_deriv), color = "green", alpha = 1) +
+    geom_line(aes(x = x.time, y = norm_speed * 200), color = "yellow", alpha = 0.5)
     theme_bw() +
-    labs(x = "Time (s)", y = "Speed (normalized)", title = "Speed of Cursor Over Time")
+    labs(x = "Time (s)", y = "angle + derivatives", title = "Speed of Cursor Over Time")
   
   # add a vertical line where start_move_event = TRUE
   f <- f + geom_vline(aes(xintercept = x.time), data = trial_df %>% filter(start_move_event == TRUE), color = "grey")
   
-  # save the plot
-  ggsave(filename = paste("trial_", trial, "_speed.png", sep = ""), plot = f, path = "plots")
+  # add legend
+  f <- f + theme(legend.position = "right")
   
+  # save the plot
+  ggsave(filename = paste("trial_", trial, "_angle.png", sep = ""), plot = f, path = "plots")
+  
+  
+  # 
+  # #### Position
+  # f <- trial_df %>% 
+  #   ggplot(aes(x = x.time, y = angle_change)) +
+  #   geom_line(color = "purple", alpha = 0.2) +
+  #   geom_line(aes(x = x.time, y = angle), color = "blue", alpha = 0.2) +
+  #   geom_line(aes(x = x.time, y = angle_2nd_deriv), color = "red", alpha = 0.2) +
+  #   geom_line(aes(x = x.time, y = smoothed_abs_angle_2nd_deriv), color = "green", alpha = 1) +
+  #   theme_bw() +
+  #   labs(x = "Time (s)", y = "position + derivatives", title = "Speed of Cursor Over Time")
+  # 
+  # # add a vertical line where start_move_event = TRUE
+  # f <- f + geom_vline(aes(xintercept = x.time), data = trial_df %>% filter(start_move_event == TRUE), color = "grey")
+  # 
+  # # add legend
+  # f <- f + theme(legend.position = "right")
+  # 
+  # # save the plot
+  # ggsave(filename = paste("trial_", trial, "_position.png", sep = ""), plot = f, path = "plots")
+  # 
 
-
-
+  
+  
+  
   # plot the x and z positions of the cursor
   f2 <- trial_df %>% 
     ggplot(aes(x = pos_x, y = pos_z, color = angle_2nd_deriv)) +
