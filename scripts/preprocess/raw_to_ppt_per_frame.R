@@ -74,9 +74,6 @@ load_trackerholderobject_csv <- function(path, ppt) {
   return(df)
 }
 
-## TESTING ##
-exp_index <- 1
-
 ##### All Experiments #####
 make_per_frame_files <- function(exp_index) {
   path <- paste(raw_dir_path, exp_versions[exp_index], sep = "/")
@@ -128,13 +125,18 @@ make_per_frame_files <- function(exp_index) {
       group_by(trial_num) %>% 
       mutate(first_pos_x = first(pos_x),
              first_pos_z = first(pos_z),
+             first_time = first(x.time),
              pos_x = pos_x - first_pos_x,
              pos_z = pos_z - first_pos_z,
+             x.time = x.time - first_time,
+             start_time = start_time - first_time,
+             end_time = end_time - first_time,
+             step_time = step_time - first_time,
              dist = sqrt(pos_x^2 + pos_z^2),
              pos_x_change = pos_x - lag(pos_x),
              pos_z_change = pos_z - lag(pos_z),
-             angle = atan2_2d(pos_x, pos_z, targetAngle),
-             angle_change = atan2_2d(pos_x_change, pos_z_change, targetAngle),
+             angle = atan2_2d(pos_x, pos_z, 90), # important for hand_track
+             angle_change = angle - lag(angle),
              angle_2nd_deriv = angle_change - lag(angle_change),
              abs_angle_2nd_deriv = abs(angle_2nd_deriv),
              smoothed_abs_angle_2nd_deriv = rollmean(abs_angle_2nd_deriv, 5, fill = NA),
@@ -145,13 +147,41 @@ make_per_frame_files <- function(exp_index) {
              smoothed_speed = rollmean(speed, 5, fill = NA),
              max_smoothed_speed = max(smoothed_speed, na.rm = TRUE),
              norm_speed = smoothed_speed / max_smoothed_speed,
-             start_move_event = norm_speed >= 0.20 &
-               !duplicated(norm_speed >= 0.20))
+             norm_speed_1st_deriv = norm_speed - lag(norm_speed),
+             norm_speed_1st_deriv_smoothed = rollmean(norm_speed_1st_deriv, 5, fill = NA),
+             max_accel = max(norm_speed_1st_deriv_smoothed, na.rm = TRUE),
+             event_start_move = ifelse(is.na(norm_speed), FALSE, (norm_speed >= 0.20 &
+                                                                    !duplicated(norm_speed >= 0.20))),
+             time_point_start_move = x.time[event_start_move],
+             pos_x_start_move = pos_x[event_start_move],
+             pos_z_start_move = pos_z[event_start_move],
+             corrected_time = x.time - time_point_start_move,
+             corrected_pos_x = pos_x - pos_x_start_move,
+             corrected_pos_z = pos_z - pos_z_start_move,
+             corrected_dist = sqrt(corrected_pos_x^2 + corrected_pos_z^2),
+             event_3cm_move = ifelse(is.na(corrected_dist), FALSE, (corrected_dist >= 0.03 &
+                                                                    !duplicated(corrected_dist >= 0.03))),
+             time_point_3cm_move = corrected_time[event_3cm_move],
+             event_max_vel = ifelse(is.na(smoothed_speed), FALSE, (smoothed_speed == max_smoothed_speed) &
+                                      !duplicated(smoothed_speed == max_smoothed_speed)),
+             time_point_max_vel = corrected_time[event_max_vel],
+             event_max_accel = ifelse(is.na(norm_speed_1st_deriv_smoothed), FALSE, (norm_speed_1st_deriv_smoothed == max_accel) &
+                                      !duplicated(norm_speed_1st_deriv_smoothed == max_accel)),
+             time_point_max_accel = corrected_time[event_max_accel],
+             angle_max_vel = angle[event_max_vel],
+             angle_max_accel = angle[event_max_accel],
+             angle_3cm_move = angle[event_3cm_move],
+             )
 
     # save the file
     new_dir_path <- paste(processed_dir_path, "/", exp_short[exp_index], "_", ppt, sep = "")
     create_dir(new_dir_path)
     fwrite(hand_track_df, file = paste(new_dir_path, "hand_track_df.csv", sep = "/"))
+
+
+
+
+
 
 
     # load the cursor object tracker
@@ -176,8 +206,13 @@ make_per_frame_files <- function(exp_index) {
       group_by(trial_num) %>% 
       mutate(first_pos_x = first(pos_x),
              first_pos_z = first(pos_z),
+             first_time = first(x.time),
              pos_x = pos_x - first_pos_x,
              pos_z = pos_z - first_pos_z,
+             x.time = x.time - first_time,
+             start_time = start_time - first_time,
+             end_time = end_time - first_time,
+             step_time = step_time - first_time,
              dist = sqrt(pos_x^2 + pos_z^2),
              pos_x_change = pos_x - lag(pos_x),
              pos_z_change = pos_z - lag(pos_z),
@@ -187,14 +222,38 @@ make_per_frame_files <- function(exp_index) {
              abs_angle_2nd_deriv = abs(angle_2nd_deriv),
              smoothed_abs_angle_2nd_deriv = rollmean(abs_angle_2nd_deriv, 5, fill = NA),
              pos_change_dist = sqrt((pos_x_change)^2 + (pos_z_change)^2),
+             pos_change_dist = sqrt((pos_x_change)^2 + (pos_z_change)^2),
              dist_change = dist - lag(dist),
              time_change = x.time - lag(x.time),
              speed = abs(pos_change_dist / time_change),
              smoothed_speed = rollmean(speed, 5, fill = NA),
              max_smoothed_speed = max(smoothed_speed, na.rm = TRUE),
              norm_speed = smoothed_speed / max_smoothed_speed,
-             start_move_event = norm_speed >= 0.20 &
-               !duplicated(norm_speed >= 0.20))
+             norm_speed_1st_deriv = norm_speed - lag(norm_speed),
+             norm_speed_1st_deriv_smoothed = rollmean(norm_speed_1st_deriv, 5, fill = NA),
+             max_accel = max(norm_speed_1st_deriv_smoothed, na.rm = TRUE),
+             event_start_move = ifelse(is.na(norm_speed), FALSE, (norm_speed >= 0.20 &
+                                                                    !duplicated(norm_speed >= 0.20))),
+             time_point_start_move = x.time[event_start_move],
+             pos_x_start_move = pos_x[event_start_move],
+             pos_z_start_move = pos_z[event_start_move],
+             corrected_time = x.time - time_point_start_move,
+             corrected_pos_x = pos_x - pos_x_start_move,
+             corrected_pos_z = pos_z - pos_z_start_move,
+             corrected_dist = sqrt(corrected_pos_x^2 + corrected_pos_z^2),
+             event_3cm_move = ifelse(is.na(corrected_dist), FALSE, (corrected_dist >= 0.03 &
+                                                                    !duplicated(corrected_dist >= 0.03))),
+             time_point_3cm_move = corrected_time[event_3cm_move],
+             event_max_vel = ifelse(is.na(smoothed_speed), FALSE, (smoothed_speed == max_smoothed_speed) &
+                                      !duplicated(smoothed_speed == max_smoothed_speed)),
+             time_point_max_vel = corrected_time[event_max_vel],
+             event_max_accel = ifelse(is.na(norm_speed_1st_deriv_smoothed), FALSE, (norm_speed_1st_deriv_smoothed == max_accel) &
+                                      !duplicated(norm_speed_1st_deriv_smoothed == max_accel)),
+             time_point_max_accel = corrected_time[event_max_accel],
+             angle_max_vel = angle[event_max_vel],
+             angle_max_accel = angle[event_max_accel],
+             angle_3cm_move = angle[event_3cm_move],
+             )
 
     # save the file
     fwrite(object_track_df, file = paste(new_dir_path, "object_track_df.csv", sep = "/"))
@@ -230,17 +289,23 @@ plot_trials <- function(trial){
     filter(trial_num == trial) 
   
   f <- trial_df %>% 
-    ggplot(aes(x = x.time, y = angle_change)) +
+    ggplot(aes(x = corrected_time, y = angle_change)) +
     geom_line(color = "purple", alpha = 0.2) +
-    geom_line(aes(x = x.time, y = angle), color = "blue", alpha = 0.2) +
-    geom_line(aes(x = x.time, y = angle_2nd_deriv), color = "red", alpha = 0.2) +
-    geom_line(aes(x = x.time, y = smoothed_abs_angle_2nd_deriv), color = "green", alpha = 1) +
-    geom_line(aes(x = x.time, y = norm_speed * 200), color = "yellow", alpha = 0.5)
+    geom_line(aes(x = corrected_time, y = angle), color = "blue", alpha = 0.2) +
+    geom_line(aes(x = corrected_time, y = angle_2nd_deriv), color = "red", alpha = 0.2) +
+    geom_line(aes(x = corrected_time, y = smoothed_abs_angle_2nd_deriv), color = "green", alpha = 0.2) +
+    geom_line(aes(x = corrected_time, y = norm_speed * 200), color = "orange", alpha = 1) +
+    geom_line(aes(x = corrected_time, y = norm_speed_1st_deriv * 2000), color = "black", alpha = 0.5) +
+    geom_line(aes(x = corrected_time, y = norm_speed_1st_deriv_smoothed * 2000), color = "black", alpha = 1) +
     theme_bw() +
     labs(x = "Time (s)", y = "angle + derivatives", title = "Speed of Cursor Over Time")
   
-  # add a vertical line where start_move_event = TRUE
-  f <- f + geom_vline(aes(xintercept = x.time), data = trial_df %>% filter(start_move_event == TRUE), color = "grey")
+  # add a vertical line where event_start_move = TRUE
+  f <- f + geom_vline(aes(xintercept = corrected_time), data = trial_df %>% filter(event_start_move == TRUE), color = "green")
+  # add a vertical line where event_max_vel = TRUE
+  f <- f + geom_vline(aes(xintercept = corrected_time), data = trial_df %>% filter(event_max_vel == TRUE), color = "orange")
+  # add a vertical line where event_max_accel = TRUE
+  f <- f + geom_vline(aes(xintercept = corrected_time), data = trial_df %>% filter(event_max_accel == TRUE), color = "red")
   
   # add legend
   f <- f + theme(legend.position = "right")
@@ -269,26 +334,40 @@ plot_trials <- function(trial){
   # # save the plot
   # ggsave(filename = paste("trial_", trial, "_position.png", sep = ""), plot = f, path = "plots")
   # 
-
-  
   
   
   # plot the x and z positions of the cursor
   f2 <- trial_df %>% 
-    ggplot(aes(x = pos_x, y = pos_z, color = angle_2nd_deriv)) +
+    ggplot(aes(x = corrected_pos_x, y = corrected_pos_z, color = angle)) +
     geom_point() +
     theme_bw() +
     labs(x = "X Position (m)", y = "Z Position (m)", title = "Cursor Position Over Time")
   
   # use a color palette that highlights 0
-  f2 <- f2 + scale_color_gradient(low = "blue", high = "red")
-  
-  # add a dot where start_move_event = TRUE
-  f2 <- f2 + geom_point(aes(x = pos_x, y = pos_z), data = trial_df %>% filter(start_move_event == TRUE), color = "red", size = 3)
+  f2 <- f2 + scale_color_gradient(low = "blue", high = "red",
+                                  limits = c(-90, 90), 
+                                  breaks = c(-80, 0, 80),
+                                  labels = c("-90", "0", "90"))
+
+  # add a dot for event_start_move and event_max_vel
+  f2 <- f2 + 
+    geom_point(aes(x = corrected_pos_x, y = corrected_pos_z), data = trial_df %>% filter(event_start_move == TRUE), color = "green", size = 3) + 
+    geom_point(aes(x = corrected_pos_x, y = corrected_pos_z), data = trial_df %>% filter(event_max_vel == TRUE), color = "orange", size = 3) +
+    geom_point(aes(x = corrected_pos_x, y = corrected_pos_z), data = trial_df %>% filter(event_max_accel == TRUE), color = "red", size = 3) +
+    geom_point(aes(x = corrected_pos_x, y = corrected_pos_z), data = trial_df %>% filter(event_3cm_move == TRUE), color = "black", size = 3)
 
   # add vertical and horizontal lines at the origin
   f2 <- f2 + geom_vline(xintercept = 0, color = "black", linetype = "dashed")
   f2 <- f2 + geom_hline(yintercept = 0, color = "black", linetype = "dashed")
+
+  # add text for angle_max_vel
+  f2 <- f2 + geom_text(aes(x = 0.05, y = 0.03, label = round(angle_max_vel, 0)), data = trial_df %>% filter(event_max_vel == TRUE), color = "orange", size = 3) +
+    geom_text(aes(x = 0.05, y = 0.01, label = round(angle_max_accel, 0)), data = trial_df %>% filter(event_max_accel == TRUE), color = "red", size = 3) +
+    geom_text(aes(x = 0.05, y = 0.05, label = round(angle_3cm_move, 0)), data = trial_df %>% filter(event_3cm_move == TRUE), color = "black", size = 3)
+
+
+  # round the angle_max_vel to 2 decimal places
+
 
   # set x and y limits
   f2 <- f2 + xlim(-0.20, 0.20) + ylim(-0.05, 0.20)
@@ -300,7 +379,7 @@ plot_trials <- function(trial){
 
 do_test <- function(){
   # make a range from 139 - 149 (rotated trials)
-  rotated_trials <- seq(139, 158, 1)
+  rotated_trials <- seq(139, 169, 1)
 
   for (trial in rotated_trials){
     var <- paste("P", trial, sep = "")
@@ -309,8 +388,20 @@ do_test <- function(){
   }
 }
 
-exp_index <- 2
+exp_index <- 1
 path <- paste(raw_dir_path, exp_versions[exp_index], sep = "/")
 ppt <- "10"
+trial <- "157"
 
-# do_test()
+# using trial_df, calculate the distance between home and obj_spawn
+trial_df_dists <- trial_df %>% 
+  filter(trial_num == trial) %>%
+  mutate(dist_home_obj_spawn = sqrt((home_x - obj_spawn_x)^2 + (home_z - obj_spawn_z)^2)) %>%
+  mutate(dist_obj_spawn_recepticle = sqrt((obj_spawn_x - recepticle_x)^2 + (obj_spawn_z - recepticle_z)^2))
+
+# use trial df to plot cursor_rotation over trial_num
+f <- trial_df %>% 
+  ggplot(aes(x = trial_num, y = cursor_rotation, color = type)) +
+  geom_point() +
+  theme_bw() +
+  labs(x = "Trial Number", y = "Rotation (degrees)", title = "Rotation Over Trial Number")
