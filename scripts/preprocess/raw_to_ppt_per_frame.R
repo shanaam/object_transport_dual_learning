@@ -1,14 +1,13 @@
 ## --------------------------------
-## Purpose of script: Make long (per_frame) CSVs for trackerholder (the real hand),
-## and not the cursorObject (the object)
-##
+## Purpose of script: Make long (per_frame) CSVs for hand path to object, 
+## and object path to receptacle
 ## Author: Shanaa Modchalingam
 ##
 ## Email: s.modcha@gmail.com
 ##
 ## --------------------------------
 ##
-## Notes: 
+## Notes: uses data from data/raw
 ##
 ## --------------------------------
 
@@ -171,6 +170,9 @@ make_per_frame_files <- function(exp_index) {
              angle_max_vel = angle[event_max_vel],
              angle_max_accel = angle[event_max_accel],
              angle_3cm_move = angle[event_3cm_move],
+             time_start_move = time_point_start_move - start_time,
+             time_reach = step_time - time_point_start_move,
+             time_total_move = step_time - start_time,
              )
 
     # save the file
@@ -253,6 +255,9 @@ make_per_frame_files <- function(exp_index) {
              angle_max_vel = angle[event_max_vel],
              angle_max_accel = angle[event_max_accel],
              angle_3cm_move = angle[event_3cm_move],
+             time_start_move = time_point_start_move - step_time,
+             time_reach = end_time - time_point_start_move,
+             time_total_move = end_time - step_time,
              )
 
     # save the file
@@ -314,28 +319,6 @@ plot_trials <- function(trial){
   ggsave(filename = paste("trial_", trial, "_angle.png", sep = ""), plot = f, path = "plots")
   
   
-  # 
-  # #### Position
-  # f <- trial_df %>% 
-  #   ggplot(aes(x = x.time, y = angle_change)) +
-  #   geom_line(color = "purple", alpha = 0.2) +
-  #   geom_line(aes(x = x.time, y = angle), color = "blue", alpha = 0.2) +
-  #   geom_line(aes(x = x.time, y = angle_2nd_deriv), color = "red", alpha = 0.2) +
-  #   geom_line(aes(x = x.time, y = smoothed_abs_angle_2nd_deriv), color = "green", alpha = 1) +
-  #   theme_bw() +
-  #   labs(x = "Time (s)", y = "position + derivatives", title = "Speed of Cursor Over Time")
-  # 
-  # # add a vertical line where start_move_event = TRUE
-  # f <- f + geom_vline(aes(xintercept = x.time), data = trial_df %>% filter(start_move_event == TRUE), color = "grey")
-  # 
-  # # add legend
-  # f <- f + theme(legend.position = "right")
-  # 
-  # # save the plot
-  # ggsave(filename = paste("trial_", trial, "_position.png", sep = ""), plot = f, path = "plots")
-  # 
-  
-  
   # plot the x and z positions of the cursor
   f2 <- trial_df %>% 
     ggplot(aes(x = corrected_pos_x, y = corrected_pos_z, color = angle)) +
@@ -393,15 +376,15 @@ path <- paste(raw_dir_path, exp_versions[exp_index], sep = "/")
 ppt <- "10"
 trial <- "157"
 
-# using trial_df, calculate the distance between home and obj_spawn
-trial_df_dists <- trial_df %>% 
-  filter(trial_num == trial) %>%
-  mutate(dist_home_obj_spawn = sqrt((home_x - obj_spawn_x)^2 + (home_z - obj_spawn_z)^2)) %>%
-  mutate(dist_obj_spawn_recepticle = sqrt((obj_spawn_x - recepticle_x)^2 + (obj_spawn_z - recepticle_z)^2))
-
-# use trial df to plot cursor_rotation over trial_num
-f <- trial_df %>% 
-  ggplot(aes(x = trial_num, y = cursor_rotation, color = type)) +
-  geom_point() +
-  theme_bw() +
-  labs(x = "Trial Number", y = "Rotation (degrees)", title = "Rotation Over Trial Number")
+# # using trial_df, calculate the distance between home and obj_spawn
+# trial_df_dists <- trial_df %>% 
+#   filter(trial_num == trial) %>%
+#   mutate(dist_home_obj_spawn = sqrt((home_x - obj_spawn_x)^2 + (home_z - obj_spawn_z)^2)) %>%
+#   mutate(dist_obj_spawn_recepticle = sqrt((obj_spawn_x - recepticle_x)^2 + (obj_spawn_z - recepticle_z)^2))
+# 
+# # use trial df to plot cursor_rotation over trial_num
+# f <- trial_df %>% 
+#   ggplot(aes(x = trial_num, y = cursor_rotation, color = type)) +
+#   geom_point() +
+#   theme_bw() +
+#   labs(x = "Trial Number", y = "Rotation (degrees)", title = "Rotation Over Trial Number")

@@ -75,7 +75,7 @@ make_single_rot_file <- function(exp_index) {
     # any single_rot specific stuff here
 
     # add an empty column called dual_rot
-    df$dual_rot <- NA
+    df$dual_rotation <- NA
 
     # change the column name pick_up_time to step_time
     df <- df %>% rename(step_time = pick_up_time)
