@@ -7,7 +7,7 @@
 ##
 ## --------------------------------
 ##
-## Notes: uses data from data/raw
+## Notes: uses frame data from data/raw and trial data from data/preprocessed/per_ppt
 ##
 ## --------------------------------
 
@@ -36,18 +36,13 @@ create_dir <- function(path) {
 }
 
 # load trial_results.csv
-load_trial_result_csv <- function(path, exp_index, ppt) {
+load_trial_result_csv <- function(path) {
   # creat csv path
-  csv_path <- paste(path, ppt, "S001", "trial_results.csv", sep = "/")
+  csv_path <- paste(path, "trial_results.csv", sep = "/")
 
   # read in the csv
   df <- fread(csv_path, stringsAsFactors = FALSE)
 
-  # fix the ppid
-  new_ppid <- paste(exp_short[exp_index], ppt, sep = "_")
-
-  df$ppid <- NULL # get rid of ppid to avoid type coercion errors
-  df$ppid <- new_ppid
   return(df)
 }
 
@@ -79,8 +74,11 @@ make_per_frame_files <- function(exp_index) {
   
   # loop through the files in path
   for (ppt in list.files(path = path)) {
+
+    # create a new directory for the new csvs
+    ppt_processed_dir_path <- paste(processed_dir_path, "/", exp_short[exp_index], "_", ppt, sep = "")
     # load the trial results
-    trial_df <- load_trial_result_csv(path, exp_index, ppt)
+    trial_df <- load_trial_result_csv(ppt_processed_dir_path)
 
     # if there is a column names pick_up_time, rename it
     if ("pick_up_time" %in% colnames(trial_df)) {
@@ -176,9 +174,8 @@ make_per_frame_files <- function(exp_index) {
              )
 
     # save the file
-    new_dir_path <- paste(processed_dir_path, "/", exp_short[exp_index], "_", ppt, sep = "")
-    create_dir(new_dir_path)
-    fwrite(hand_track_df, file = paste(new_dir_path, "hand_track_df.csv", sep = "/"))
+    
+    fwrite(hand_track_df, file = paste(ppt_processed_dir_path, "hand_track_df.csv", sep = "/"))
 
 
 
@@ -261,7 +258,7 @@ make_per_frame_files <- function(exp_index) {
              )
 
     # save the file
-    fwrite(object_track_df, file = paste(new_dir_path, "object_track_df.csv", sep = "/"))
+    fwrite(object_track_df, file = paste(ppt_processed_dir_path, "object_track_df.csv", sep = "/"))
   }
 }
 
@@ -362,9 +359,9 @@ plot_trials <- function(trial){
 
 do_test <- function(){
   # make a range from 139 - 149 (rotated trials)
-  rotated_trials <- seq(139, 169, 1)
+  plotted_trials <- seq(48, 62, 1)
 
-  for (trial in rotated_trials){
+  for (trial in plotted_trials){
     var <- paste("P", trial, sep = "")
       
     assign(var, future({plot_trials(trial)}))
@@ -373,8 +370,8 @@ do_test <- function(){
 
 exp_index <- 1
 path <- paste(raw_dir_path, exp_versions[exp_index], sep = "/")
-ppt <- "10"
-trial <- "157"
+ppt <- "7"
+trial <- "48"
 
 # # using trial_df, calculate the distance between home and obj_spawn
 # trial_df_dists <- trial_df %>% 

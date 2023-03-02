@@ -72,10 +72,11 @@ make_single_rot_file <- function(exp_index) {
     # read in the csv
     df <- load_and_fix_csv(csv_path, exp_index, ppt)
 
-    # any single_rot specific stuff here
+    ##### any single_rot specific stuff here #####
+    df$targetAngle <- df$targetAngle - df$distractor_loc
 
-    # add an empty column called dual_rot
-    df$dual_rotation <- NA
+    # add a column called dual_rot
+    df$dual_rotation <- df$cursor_rotation
 
     # change the column name pick_up_time to step_time
     df <- df %>% rename(step_time = pick_up_time)
