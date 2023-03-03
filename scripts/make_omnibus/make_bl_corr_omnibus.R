@@ -52,6 +52,11 @@ make_bl_corrected_omnibus <- function(){
     filter(practice_block == FALSE) %>%
     select(-practice_block) 
 
+  # recode "aligned" and "rotated" in type to "reach"
+  omnibus_df$type <- recode(omnibus_df$type, 
+                            "aligned" = "reach", 
+                            "rotated" = "reach")
+
   baseline_blocks <- dict(
     list(
       sr_30 = c(6, 7, 8, 9, 10, 11, 12, 13),
@@ -98,7 +103,7 @@ make_bl_corrected_omnibus <- function(){
     on = .(exp, ppid, type, hand), 
     nomatch = 0]
   
-  # coby 3cm move columns
+  # copy 3cm move columns
   omnibus_df$raw_hand_angle_3cm_move <- omnibus_df$hand_angle_3cm_move
   omnibus_df$raw_obj_angle_3cm_move <- omnibus_df$obj_angle_3cm_move
 

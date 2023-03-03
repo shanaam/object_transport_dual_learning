@@ -86,32 +86,29 @@ make_per_frame_files <- function(exp_index) {
     }
 
     # load the cursor object tracker
-    hand_track_df <- load_trackerholderobject_csv(path, ppt)
+    tracker_holder_df <- load_trackerholderobject_csv(path, ppt)
     
     # non equi join using data table (not sure dplyr can do this)
-    hand_track_df <- hand_track_df[trial_df, on = .(time >= start_time, time < end_time), 
+    tracker_holder_df <- tracker_holder_df[trial_df, on = .(time >= start_time, time < end_time), 
                            nomatch = 0, .(pos_x, pos_y, pos_z, x.time, 
                                           start_time, end_time, step_time, 
                                           trial_num, block_num, trial_num_in_block, targetAngle, cursor_rotation,
                                           type, hand, obj_shape, ppid)]
 
     # remove rows where type = "instruction"
-    hand_track_df <- hand_track_df %>% filter(type != "instruction")
+    tracker_holder_df <- tracker_holder_df %>% filter(type != "instruction")
 
     # add a column for the step number
-    hand_track_df <- hand_track_df %>% 
+    tracker_holder_df <- tracker_holder_df %>% 
       mutate(step_num = case_when(x.time < step_time ~ 0,
                                   TRUE ~ 1))
 
     # keep only rows where step_num = 0
-    hand_track_df <- hand_track_df %>% 
+    hand_track_df <- tracker_holder_df %>% 
       filter(step_num == 0)
 
     # remove the step_num column
     hand_track_df$step_num <- NULL
-
-    # remove rows where type = "instruction"
-    hand_track_df <- hand_track_df %>% filter(type != "instruction")
 
     # remove the first row of each trial -- this is always set to 0
     hand_track_df <- hand_track_df %>% 
@@ -178,20 +175,26 @@ make_per_frame_files <- function(exp_index) {
     fwrite(hand_track_df, file = paste(ppt_processed_dir_path, "hand_track_df.csv", sep = "/"))
 
 
+    
+    
+    
+    # # load the cursor object tracker
+    # object_track_df <- load_cursorobjecttracker_csv(path, ppt)
+    # 
+    # # non equi join using data table (not sure dplyr can do this)
+    # object_track_df <- object_track_df[trial_df, on = .(time >= start_time, time < end_time), 
+    #                        nomatch = 0, .(pos_x, pos_y, pos_z, x.time, 
+    #                                       start_time, end_time, step_time, 
+    #                                       trial_num, block_num, trial_num_in_block, targetAngle, cursor_rotation,
+    #                                       type, hand, obj_shape, ppid)]
 
+    
+    # keep only rows where step_num = 1
+    object_track_df <- tracker_holder_df %>% 
+      filter(step_num == 1)
 
-
-
-
-    # load the cursor object tracker
-    object_track_df <- load_cursorobjecttracker_csv(path, ppt)
-
-    # non equi join using data table (not sure dplyr can do this)
-    object_track_df <- object_track_df[trial_df, on = .(time >= start_time, time < end_time), 
-                           nomatch = 0, .(pos_x, pos_y, pos_z, x.time, 
-                                          start_time, end_time, step_time, 
-                                          trial_num, block_num, trial_num_in_block, targetAngle, cursor_rotation,
-                                          type, hand, obj_shape, ppid)]
+    # remove the step_num column
+    object_track_df$step_num <- NULL
 
     # remove rows where type = "instruction"
     object_track_df <- object_track_df %>% filter(type != "instruction")

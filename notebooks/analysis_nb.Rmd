@@ -14,5 +14,69 @@ output:
 ```{r setup, include=FALSE, warning=FALSE}
 rm(list = ls()) # clean environment
 
-source("src/helper_funcs.R")
+source("../src/helper_funcs.R")
+library(data.table)
+library(tidyverse)
+library(future) # for parallel processing
+```
+
+# Introduction
+We are interested in adaptation to visuomotor rotations during the transport of objects to receptacles. Crucially, rotations are mapped to the objects themselves, that is, the perturbation is only applied to a movement while transporting an object. 
+
+In doing so, we are interested in the following questions:
+1. Can visual cues (the object) enable object-specific motor memories?
+2. Can these object specific motor memories be transferred to the opposite hand (and if so what proportion)?
+3. Can people develop multiple object-specific motor memories simultatneously?
+4. Do patterns of the above change when learning is more explicit (i.e., through a larger rotation)
+
+# Preliminary Analysis
+
+## Data Import
+
+```{r}
+# import data
+data_path <- "../data/preprocessed/omnibus/omnibus_bl_corrected.csv"
+
+all_data <- fread(data_path)
+```
+
+```{r}
+# make any and all summary dfs here
+by_trial_df <- all_data %>%
+  group_by(exp, type) %>%
+  summarise(
+    mean_obj_angle_3cm_move = mean(obj_angle_3cm_move),
+    ci_obj_angle_3cm_move = vector_confint(obj_angle_3cm_move),
+    mean_obj_time_start_move = mean(obj_time_start_move),
+    ci_obj_time_start_move = vector_confint(obj_time_start_move),
+    mean_obj_time_reach = mean(obj_time_reach),
+    ci_obj_time_reach = vector_confint(obj_time_reach),
+    mean_obj_time_total_move = mean(obj_time_total_move),
+    ci_obj_time_total_move = vector_confint(obj_time_total_move),
+    mean_hand_angle_3cm_move = mean(hand_angle_3cm_move),
+    ci_hand_angle_3cm_move = vector_confint(hand_angle_3cm_move),
+    mean_hand_time_start_move = mean(hand_time_start_move),
+    ci_hand_time_start_move = vector_confint(hand_time_start_move),
+    mean_hand_time_reach = mean(hand_time_reach),
+    ci_hand_time_reach = vector_confint(hand_time_reach),
+    mean_hand_time_total_move = mean(hand_time_total_move),
+    ci_hand_time_total_move = vector_confint(hand_time_total_move),
+  )
+```
+
+```{r}
+# plot obj_angle_3cm_move over trial_num for each ppid
+all_data %>% 
+  group_by(ppid) %>% 
+  ggplot(aes(x = trial_num, y = obj_angle_3cm_move, colour = type)) +
+  facet_wrap(~exp, ncol = 1) +
+  geom_point(alpha = 0.1)
+
+  
+```
+
+
+
+```{r}
+
 ```
