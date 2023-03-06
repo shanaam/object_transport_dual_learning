@@ -78,6 +78,12 @@ make_single_rot_file <- function(exp_index) {
     # add a column called dual_rot
     df$dual_rotation <- df$cursor_rotation
 
+    # add a column called positive_obj_shape
+    df_30 <- df %>% filter(dual_rotation == 30)
+    df_40 <- df %>% filter(dual_rotation == 40)
+
+    df$positive_obj_shape <- "NA"
+
     # change the column name pick_up_time to step_time
     df <- df %>% rename(step_time = pick_up_time)
     
@@ -99,10 +105,14 @@ make_dual_30_file <- function(exp_index) {
     df <- load_and_fix_csv(csv_path, exp_index, ppt)
 
     # any dual_rot specific stuff here
-
     # remove the blank columns
     df <- df[, -c(28:33)]
-    
+
+    # add a positive obj_shape column
+    df_30 <- df %>% filter(dual_rotation == 30)
+    first_obj_shape <- df_30[1,]$obj_shape
+    df$positive_obj_shape <- first_obj_shape
+
     # save the modified csv
     save_modified_csv(df, processed_dir_path, exp_index, ppt)
   }
@@ -123,6 +133,11 @@ make_dual_60_file <- function(exp_index) {
     # any dual_rot specific stuff here
     # remove the blank columns
     df <- df[, -c(28:33)]
+
+    # add a positive obj_shape column
+    df_60 <- df %>% filter(dual_rotation == 60)
+    first_obj_shape <- df_60[1,]$obj_shape
+    df$positive_obj_shape <- first_obj_shape
 
     # save the modified csv
     save_modified_csv(df, processed_dir_path, exp_index, ppt)

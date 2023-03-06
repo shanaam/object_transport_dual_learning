@@ -43,7 +43,7 @@ all_data <- fread(data_path)
 ```{r}
 # make any and all summary dfs here
 by_trial_df <- all_data %>%
-  group_by(exp, type) %>%
+  group_by(exp, type, trial_num) %>%
   summarise(
     mean_obj_angle_3cm_move = mean(obj_angle_3cm_move),
     ci_obj_angle_3cm_move = vector_confint(obj_angle_3cm_move),
@@ -66,17 +66,24 @@ by_trial_df <- all_data %>%
 
 ```{r}
 # plot obj_angle_3cm_move over trial_num for each ppid
-all_data %>% 
-  group_by(ppid) %>% 
-  ggplot(aes(x = trial_num, y = obj_angle_3cm_move, colour = type)) +
+f <- all_data %>% 
+  ggplot(aes(x = trial_num, y = obj_angle_3cm_move, colour = ppid)) +
   facet_wrap(~exp, ncol = 1) +
-  geom_point(alpha = 0.1)
+  geom_line(alpha = 0.1)
 
-  
+# add in summary data
+f <- f + geom_line(data = by_trial_df, aes(x = trial_num, y = mean_obj_angle_3cm_move, colour = type), size = 1.5)
+
+# remove legend
+f <- f + theme(legend.position = "none")
+
+f
 ```
-
-
-
+# Dual Rotation Experiments
+## Clamp Trials
 ```{r}
-
+# isolate only the dr_30 and dr_60 data
+without_strategy_dr <- all_data %>% 
+  filter(exp %in% c("dr_30", "dr_60"), 
+         block_num == 13 | block_num == 14)
 ```

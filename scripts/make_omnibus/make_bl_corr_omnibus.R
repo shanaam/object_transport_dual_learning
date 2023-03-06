@@ -117,7 +117,7 @@ make_bl_corrected_omnibus <- function(){
 }
 
 # plot the distributuion of bl_hand_angle_3cm_move
-p <- baseline_df %>% 
+p <- omnibus_df %>% 
   ggplot(aes(x = bl_hand_angle_3cm_move)) +
   geom_histogram(bins = 50) +
   facet_wrap(~exp * hand) +
@@ -136,7 +136,7 @@ p <- baseline_df %>%
 p
 
 # plot the distributuion of bl_obj_angle_3cm_move
-p <- baseline_df %>% 
+p <- omnibus_df %>% 
   ggplot(aes(x = bl_obj_angle_3cm_move)) +
   geom_histogram(bins = 50) +
   facet_wrap(~exp * hand) +
