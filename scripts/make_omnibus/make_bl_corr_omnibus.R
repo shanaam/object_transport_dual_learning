@@ -23,6 +23,16 @@ library(collections) # for dicts
 to_load_file_path <- "data/preprocessed/omnibus/omnibus_raw.csv"
 to_save_dir_path <- "data/preprocessed/omnibus"
 
+##### Helper functions #####
+slope <- function(x, y){
+  return(cov(x, y)/var(x))
+}
+
+intercept <- function(x, y, slope){
+  b <- mean(y) - (slope * mean(x))
+  return(b)
+}
+
 # note where might futures be useful?
 make_bl_corrected_omnibus <- function(){
   # load file
@@ -111,14 +121,39 @@ make_bl_corrected_omnibus <- function(){
   omnibus_df$hand_angle_3cm_move <- omnibus_df$raw_hand_angle_3cm_move - omnibus_df$bl_hand_angle_3cm_move
   omnibus_df$obj_angle_3cm_move <- omnibus_df$raw_obj_angle_3cm_move - omnibus_df$bl_obj_angle_3cm_move
 
-  # save as a csv
-  fwrite(omnibus_df, file = paste(to_save_dir_path, "omnibus_bl_corrected.csv", sep = "/"))
+  # rename the rotation_switch column to miniblock_num
+  omnibus_df <- omnibus_df %>% 
+    rename(miniblock_num = rotation_switch)
 
+  return(omnibus_df)
 }
 
+add_columns_to_omnibus <- function(omnibus_df){
+
+  # group by exp, ppid, block_num, miniblock_num
+  omnibus_df <- omnibus_df %>% 
+    group_by(exp, ppid, block_num, miniblock_num) %>%
+    mutate(
+      # add a column for the mean of the first 3 values of obj_angle_3cm_move
+      obj_angles_when_rot_change = mean(obj_angle_3cm_move[1:3]),
+      # add a column for the slope of the first 3 values of obj_angle_3cm_move
+      obj_angles_when_rot_change_slope = slope(1:3, obj_angle_3cm_move[1:3]),
+      obj_angles_when_rot_change_intercept = intercept(1:3, obj_angle_3cm_move[1:3], obj_angles_when_rot_change_slope)
+    )
+  
+  return <- omnibus_df
+} 
+
+process_and_save_baseline_df <- function(){
+  omnibus_df <- make_bl_corrected_omnibus()
+  omnibus_df <- add_columns_to_omnibus(omnibus_df)
+
+  # save as a csv
+  fwrite(omnibus_df, file = paste(to_save_dir_path, "omnibus_bl_corrected.csv", sep = "/"))
+}
 
 ##### Do #####
-make_bl_corrected_omnibus()
+process_and_save_baseline_df()
 
 
 

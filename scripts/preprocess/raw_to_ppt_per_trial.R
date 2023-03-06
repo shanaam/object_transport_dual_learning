@@ -60,6 +60,25 @@ save_modified_csv <- function(df, processed_dir_path, exp_index, ppt) {
   fwrite(df, file = paste(new_dir_path, "trial_results.csv", sep = "/"))
 }
 
+# add miniblocks
+add_miniblocks <- function(df){
+  # group by exp, ppid, block_num
+  df <- df %>% group_by(type) %>%
+    mutate(diff_dual_rotation = dual_rotation - lag(dual_rotation)) %>%
+    mutate(rotation_switch = ifelse(diff_dual_rotation != 0 | 
+                                      is.na(diff_dual_rotation), 1, 0)) %>%
+    mutate(rotation_switch = cumsum(rotation_switch)) %>%
+    select(-diff_dual_rotation) %>%
+    ungroup()
+
+  # add trial_in_miniblock column
+  df <- df %>% group_by(type, rotation_switch) %>%
+    mutate(trial_in_miniblock = row_number()) %>%
+    ungroup()
+
+  return(df)
+}
+
 
 ##### Single Rotation Experiments #####
 make_single_rot_file <- function(exp_index) {
@@ -98,6 +117,9 @@ make_single_rot_file <- function(exp_index) {
 
     # change the column name pick_up_time to step_time
     df <- df %>% rename(step_time = pick_up_time)
+
+    # add miniblocks
+    df <- add_miniblocks(df)
     
     # save the modified csv
     save_modified_csv(df, processed_dir_path, exp_index, ppt)
@@ -125,6 +147,9 @@ make_dual_30_file <- function(exp_index) {
     first_obj_shape <- df_30[1,]$obj_shape
     df$positive_obj_shape <- first_obj_shape
 
+    # add miniblocks
+    df <- add_miniblocks(df)
+
     # save the modified csv
     save_modified_csv(df, processed_dir_path, exp_index, ppt)
   }
@@ -150,6 +175,9 @@ make_dual_60_file <- function(exp_index) {
     df_60 <- df %>% filter(dual_rotation == 60)
     first_obj_shape <- df_60[1,]$obj_shape
     df$positive_obj_shape <- first_obj_shape
+
+    # add miniblocks
+    df <- add_miniblocks(df)
 
     # save the modified csv
     save_modified_csv(df, processed_dir_path, exp_index, ppt)

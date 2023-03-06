@@ -18,6 +18,7 @@ source("../src/helper_funcs.R")
 library(data.table)
 library(tidyverse)
 library(future) # for parallel processing
+library(ggbeeswarm)
 ```
 
 # Introduction
@@ -86,4 +87,171 @@ f
 without_strategy_dr <- all_data %>% 
   filter(exp %in% c("dr_30", "dr_60"), 
          block_num == 13 | block_num == 14)
+
+# summarize obj_angle_3cm_move by exp, ppid, obj_shape_sign
+clamped_df <- without_strategy_dr %>% 
+  group_by(exp, ppid, obj_shape_sign) %>%
+  summarise(
+    mean_obj_angle_3cm_move = mean(obj_angle_3cm_move),
+    ci_obj_angle_3cm_move = vector_confint(obj_angle_3cm_move)
+  )
+
+clamped_summary_df <- clamped_df %>% 
+  group_by(exp, obj_shape_sign) %>%
+  summarise(
+    means = mean(mean_obj_angle_3cm_move),
+    cis = vector_confint(mean_obj_angle_3cm_move)
+  )
 ```
+
+```{r}
+
+# plot mean_obj_angle_3cm_move by obj_shape_sign
+f <- clamped_df %>% 
+  ggplot(aes(x = obj_shape_sign, y = mean_obj_angle_3cm_move)) +
+  facet_wrap(~exp) +
+  geom_beeswarm() +
+  geom_point(data = clamped_summary_df, aes(x = obj_shape_sign, y = means), size = 3, colour = "red") +
+  geom_errorbar(data = clamped_summary_df, aes(x = obj_shape_sign, y = means, ymin = means - cis, ymax = means + cis), width = 0.2, colour = "red")
+
+f
+```
+
+```{r}
+# pivot clamped_df wide by obj_shape_sign
+clamped_df_wide <- clamped_df %>%
+  select(-ci_obj_angle_3cm_move) %>%
+  mutate(obj_shape_sign = recode(
+    obj_shape_sign,
+    "1" = "positive",
+    "-1" = "negative"
+  )) %>%
+  pivot_wider(names_from = obj_shape_sign, values_from = mean_obj_angle_3cm_move) %>%
+  mutate(diff = positive - negative)
+
+clamped_df_wide_summary <- clamped_df_wide %>% 
+  group_by(exp) %>%
+  summarise(
+    means = mean(diff),
+    cis = vector_confint(diff)
+  )
+```
+
+```{r}
+# plot diff
+f <- clamped_df_wide %>% 
+  ggplot(aes(x = exp, y = diff)) +
+  geom_beeswarm() +
+  geom_point(data = clamped_df_wide_summary, aes(x = exp, y = means), size = 3, colour = "red") +
+  geom_errorbar(data = clamped_df_wide_summary, aes(x = exp, y = means, ymin = means - cis, ymax = means + cis), width = 0.2, colour = "red")
+
+f 
+```
+
+
+## Rotation Trials
+
+### Per-trial, starting from rotation-switch
+```{r}
+# isolate only the dr_30 and dr_60 data
+rotated_dr <- all_data %>% 
+  filter(exp %in% c("dr_30", "dr_60"), 
+         type == "reach", dual_rotation != 0)
+
+# make a column combining ppid and rotation_switch
+rotated_dr <- rotated_dr %>% 
+  mutate(ppid_miniblock_num = paste0(ppid, "_", miniblock_num))
+
+# plot
+f <- rotated_dr %>% 
+  ggplot(aes(x = trial_in_miniblock, y = obj_angle_3cm_move, colour = miniblock_num)) +
+  facet_wrap(~exp*dual_rotation) 
+
+# add lines grouped by ppid
+f <- f + geom_line(aes(group = ppid_miniblock_num), alpha = 0.05) 
+
+# add horizontal lines at -60, -30, 0, 30, 60
+f <- f + geom_hline(yintercept = c(-60, -30, 0, 30, 60), linetype = "dashed", alpha = 0.5)
+
+# set continuous colour scale from red to blue
+f <- f + scale_colour_gradient(low = "red", high = "blue")
+
+# save plot
+# ggsave("../plots/by_rot_switch.png", f, width = 30, height = 30)
+
+f
+```
+
+### Slope and intercept following rotation-switches, vs miniblock_num
+```{r}
+# isolate only the dr_30 and dr_60 data
+rotated_dr <- all_data %>% 
+  filter(exp %in% c("dr_30", "dr_60"), 
+         type == "reach", dual_rotation != 0)
+
+# summarise
+rotated_dr_summary <- rotated_dr %>% 
+  group_by(exp, ppid, miniblock_num, obj_shape_sign) %>%
+  summarise(
+    slopes = first(obj_angles_when_rot_change_slope),
+    intercepts = first(obj_angles_when_rot_change_intercept),
+    means = first(obj_angles_when_rot_change)
+  )
+# multiply slops and intercepts by obj_shape_sign
+rotated_dr_summary <- rotated_dr_summary %>% 
+  mutate(slopes = slopes * obj_shape_sign,
+         intercepts = intercepts * obj_shape_sign,
+         means = means * obj_shape_sign)
+
+
+```
+
+```{r}
+# plot slopes
+f <- rotated_dr_summary %>% 
+  ggplot(aes(x = miniblock_num, y = slopes, colour = ppid)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~exp) + 
+  labs(x = "Miniblock Number", y = "Slope of Angle Change On Shape Switch", colour = "Participant") + 
+  theme(legend.position = "none")
+
+# save plot
+# ggsave("../plots/slopes.png", f, width = 30, height = 20)
+
+f
+```
+
+```{r}
+# plot intercepts
+f <- rotated_dr_summary %>% 
+  ggplot(aes(x = miniblock_num, y = intercepts, colour = ppid)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~exp) + 
+  labs(x = "Miniblock Number", y = "Intercept of Angle Change On Shape Switch", colour = "Participant") + 
+  theme(legend.position = "none")
+
+# save plot
+# ggsave("../plots/intercepts.png", f, width = 30, height = 20)
+
+f
+```
+
+```{r}
+# plot means
+f <- rotated_dr_summary %>% 
+  ggplot(aes(x = miniblock_num, y = means, colour = ppid)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~exp) + 
+  labs(x = "Miniblock Number", y = "Mean Angle Change On Shape Switch", colour = "Participant") + 
+  theme(legend.position = "none")
+
+# save plot
+# ggsave("../plots/means.png", f, width = 30, height = 20)
+
+f
+```
+
+Stats for the above plot
