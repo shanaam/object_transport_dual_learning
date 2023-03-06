@@ -62,6 +62,11 @@ make_one_omnibus_file <- function(directory_index, ppt_list) {
 
   # make a new column with the first 5 characters of the ppid
   trial_df$exp <- substr(trial_df$ppid, 1, 5)
+  
+  # TRUE if obj_shape and positive_obj_shape are the same
+  trial_df <- trial_df %>% 
+    mutate(positive_obj_shape = obj_shape == positive_obj_shape) %>%
+    mutate(obj_shape_sign = ifelse(positive_obj_shape, 1, -1))
 
   # make a per trial summary and join it to the trial_df 
   hand_df_summary <- hand_df %>%

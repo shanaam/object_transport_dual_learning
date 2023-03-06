@@ -116,39 +116,46 @@ make_bl_corrected_omnibus <- function(){
 
 }
 
-# plot the distributuion of bl_hand_angle_3cm_move
-p <- omnibus_df %>% 
-  ggplot(aes(x = bl_hand_angle_3cm_move)) +
-  geom_histogram(bins = 50) +
-  facet_wrap(~exp * hand) +
-  theme_bw() +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    axis.title.x = element_blank(),
-    axis.title.y = element_blank()
-  ) +
-  labs(
-    title = "Distribution of baseline hand angle 3cm move",
-    x = "Baseline hand angle 3cm move",
-    y = "Count"
-  )
 
-p
+##### Do #####
+make_bl_corrected_omnibus()
 
-# plot the distributuion of bl_obj_angle_3cm_move
-p <- omnibus_df %>% 
-  ggplot(aes(x = bl_obj_angle_3cm_move)) +
-  geom_histogram(bins = 50) +
-  facet_wrap(~exp * hand) +
-  theme_bw() +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    axis.title.x = element_blank(),
-    axis.title.y = element_blank()
-  ) +
-  labs(
-    title = "Distribution of baseline object angle 3cm move",
-    x = "Baseline object angle 3cm move",
-    y = "Count"
-  )
-p
+
+
+
+# # plot the distributuion of bl_hand_angle_3cm_move
+# p <- omnibus_df %>% 
+#   ggplot(aes(x = bl_hand_angle_3cm_move)) +
+#   geom_histogram(bins = 50) +
+#   facet_wrap(~exp * hand) +
+#   theme_bw() +
+#   theme(
+#     axis.text.x = element_text(angle = 45, hjust = 1),
+#     axis.title.x = element_blank(),
+#     axis.title.y = element_blank()
+#   ) +
+#   labs(
+#     title = "Distribution of baseline hand angle 3cm move",
+#     x = "Baseline hand angle 3cm move",
+#     y = "Count"
+#   )
+# 
+# p
+# 
+# # plot the distributuion of bl_obj_angle_3cm_move
+# p <- omnibus_df %>% 
+#   ggplot(aes(x = bl_obj_angle_3cm_move)) +
+#   geom_histogram(bins = 50) +
+#   facet_wrap(~exp * hand) +
+#   theme_bw() +
+#   theme(
+#     axis.text.x = element_text(angle = 45, hjust = 1),
+#     axis.title.x = element_blank(),
+#     axis.title.y = element_blank()
+#   ) +
+#   labs(
+#     title = "Distribution of baseline object angle 3cm move",
+#     x = "Baseline object angle 3cm move",
+#     y = "Count"
+#   )
+# p

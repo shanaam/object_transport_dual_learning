@@ -19,6 +19,7 @@ source("src/helper_funcs.R")
 library(data.table)
 library(tidyverse)
 library(future)
+library(collections)
 
 
 ##### Variables #####
@@ -79,10 +80,21 @@ make_single_rot_file <- function(exp_index) {
     df$dual_rotation <- df$cursor_rotation
 
     # add a column called positive_obj_shape
-    df_30 <- df %>% filter(dual_rotation == 30)
-    df_40 <- df %>% filter(dual_rotation == 40)
+    opposite_obj_shape <- dict(
+      list(
+        "sphere" = "cube",
+        "cube" = "sphere"
+      )
+    )
 
-    df$positive_obj_shape <- "NA"
+    df_rotated <- df %>% filter(type == "rotated")
+    
+    
+    if (df_rotated[1,]$dual_rotation == 30) {
+      df$positive_obj_shape <- df_rotated[1,]$obj_shape
+    } else {
+      df$positive_obj_shape <- opposite_obj_shape$get(df_rotated[1,]$obj_shape)
+    }
 
     # change the column name pick_up_time to step_time
     df <- df %>% rename(step_time = pick_up_time)
