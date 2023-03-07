@@ -19,6 +19,17 @@ library(data.table)
 library(tidyverse)
 library(future) # for parallel processing
 library(ggbeeswarm)
+
+# Helper functions
+##### Helper functions #####
+slope <- function(x, y){
+  return(cov(x, y)/var(x))
+}
+
+intercept <- function(x, y, slope){
+  b <- mean(y) - (slope * mean(x))
+  return(b)
+}
 ```
 
 # Introduction
@@ -203,8 +214,31 @@ rotated_dr_summary <- rotated_dr_summary %>%
          intercepts = intercepts * obj_shape_sign,
          means = means * obj_shape_sign)
 
+# make second order summary
+rotated_dr_2nd_order_summary <- rotated_dr_summary %>% 
+  group_by(exp, ppid) %>%
+  summarise(
+    rate_of_change_means = mean(means),
+    cis = vector_confint(means),
+    rate_of_change_slopes = mean(slopes),
+    cis = vector_confint(slopes),
+    rate_of_change_intercepts = mean(intercepts),
+    cis = vector_confint(intercepts)
+  )
 
+# third order summary
+rotated_dr_exp_summary <- rotated_dr_2nd_order_summary %>% 
+  group_by(exp) %>%
+  summarise(
+    mean_rate_of_change_means = mean(rate_of_change_means),
+    means_cis = vector_confint(rate_of_change_means),
+    mean_rate_of_change_slopes = mean(rate_of_change_slopes),
+    slopes_cis = vector_confint(rate_of_change_slopes),
+    mean_rate_of_change_intercepts = mean(rate_of_change_intercepts),
+    intercepts_cis = vector_confint(rate_of_change_intercepts)
+  )
 ```
+
 
 ```{r}
 # plot slopes
@@ -253,5 +287,55 @@ f <- rotated_dr_summary %>%
 
 f
 ```
+
+```{r}
+# plot rate of change of means using beeswarm
+f <- rotated_dr_2nd_order_summary %>% 
+  ggplot(aes(x = exp, y = rate_of_change_means, colour = ppid)) +
+  geom_beeswarm() +
+  geom_point(data = rotated_dr_exp_summary, aes(x = exp, y = mean_rate_of_change_means), size = 3, colour = "red") +
+  geom_errorbar(data = rotated_dr_exp_summary, aes(x = exp, y = mean_rate_of_change_means, ymin = mean_rate_of_change_means - means_cis, ymax = mean_rate_of_change_means + means_cis), width = 0.2, colour = "red") +
+  labs(x = "Experiment", y = "Rate of Change of Mean Angle Change On Shape Switch", colour = "Participant") + 
+  theme(legend.position = "none")
+
+# save plot
+# ggsave("../plots/means_rate_of_change.png", f, width = 30, height = 20)
+
+f
+```
+
+```{r}
+# plot rate of change of slopes using beeswarm
+f <- rotated_dr_2nd_order_summary %>% 
+  ggplot(aes(x = exp, y = rate_of_change_slopes, colour = ppid)) +
+  geom_beeswarm() +
+  geom_point(data = rotated_dr_exp_summary, aes(x = exp, y = mean_rate_of_change_slopes), size = 3, colour = "red") +
+  geom_errorbar(data = rotated_dr_exp_summary, aes(x = exp, y = mean_rate_of_change_slopes, ymin = mean_rate_of_change_slopes - slopes_cis, ymax = mean_rate_of_change_slopes + slopes_cis), width = 0.2, colour = "red") +
+  labs(x = "Experiment", y = "Rate of Change of Slope of Angle Change On Shape Switch", colour = "Participant") + 
+  theme(legend.position = "none")
+
+# save plot
+# ggsave("../plots/slopes_rate_of_change.png", f, width = 30, height = 20)
+
+f
+```
+
+```{r}
+# plot rate of change of intercepts using beeswarm
+f <- rotated_dr_2nd_order_summary %>% 
+  ggplot(aes(x = exp, y = rate_of_change_intercepts, colour = ppid)) +
+  geom_beeswarm() +
+  geom_point(data = rotated_dr_exp_summary, aes(x = exp, y = mean_rate_of_change_intercepts), size = 3, colour = "red") +
+  geom_errorbar(data = rotated_dr_exp_summary, aes(x = exp, y = mean_rate_of_change_intercepts, ymin = mean_rate_of_change_intercepts - intercepts_cis, ymax = mean_rate_of_change_intercepts + intercepts_cis), width = 0.2, colour = "red") +
+  labs(x = "Experiment", y = "Rate of Change of Intercept of Angle Change On Shape Switch", colour = "Participant") + 
+  theme(legend.position = "none")
+
+# save plot
+# ggsave("../plots/intercepts_rate_of_change.png", f, width = 30, height = 20)
+
+f
+```
+
+
 
 Stats for the above plot
