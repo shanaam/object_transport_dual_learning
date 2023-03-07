@@ -22,11 +22,11 @@ library(ggbeeswarm)
 
 # Helper functions
 ##### Helper functions #####
-slope <- function(x, y){
-  return(cov(x, y)/var(x))
+slope <- function(x, y) {
+  return(cov(x, y) / var(x))
 }
 
-intercept <- function(x, y, slope){
+intercept <- function(x, y, slope) {
   b <- mean(y) - (slope * mean(x))
   return(b)
 }
@@ -78,7 +78,7 @@ by_trial_df <- all_data %>%
 
 ```{r}
 # plot obj_angle_3cm_move over trial_num for each ppid
-f <- all_data %>% 
+f <- all_data %>%
   ggplot(aes(x = trial_num, y = obj_angle_3cm_move, colour = ppid)) +
   facet_wrap(~exp, ncol = 1) +
   geom_line(alpha = 0.1)
@@ -95,19 +95,21 @@ f
 ## Clamp Trials
 ```{r}
 # isolate only the dr_30 and dr_60 data
-without_strategy_dr <- all_data %>% 
-  filter(exp %in% c("dr_30", "dr_60"), 
-         block_num == 13 | block_num == 14)
+without_strategy_dr <- all_data %>%
+  filter(
+    exp %in% c("dr_30", "dr_60"),
+    block_num == 13 | block_num == 14
+  )
 
 # summarize obj_angle_3cm_move by exp, ppid, obj_shape_sign
-clamped_df <- without_strategy_dr %>% 
+clamped_df <- without_strategy_dr %>%
   group_by(exp, ppid, obj_shape_sign) %>%
   summarise(
     mean_obj_angle_3cm_move = mean(obj_angle_3cm_move),
     ci_obj_angle_3cm_move = vector_confint(obj_angle_3cm_move)
   )
 
-clamped_summary_df <- clamped_df %>% 
+clamped_summary_df <- clamped_df %>%
   group_by(exp, obj_shape_sign) %>%
   summarise(
     means = mean(mean_obj_angle_3cm_move),
@@ -116,9 +118,8 @@ clamped_summary_df <- clamped_df %>%
 ```
 
 ```{r}
-
 # plot mean_obj_angle_3cm_move by obj_shape_sign
-f <- clamped_df %>% 
+f <- clamped_df %>%
   ggplot(aes(x = obj_shape_sign, y = mean_obj_angle_3cm_move)) +
   facet_wrap(~exp) +
   geom_beeswarm() +
@@ -140,7 +141,7 @@ clamped_df_wide <- clamped_df %>%
   pivot_wider(names_from = obj_shape_sign, values_from = mean_obj_angle_3cm_move) %>%
   mutate(diff = positive - negative)
 
-clamped_df_wide_summary <- clamped_df_wide %>% 
+clamped_df_wide_summary <- clamped_df_wide %>%
   group_by(exp) %>%
   summarise(
     means = mean(diff),
@@ -150,13 +151,13 @@ clamped_df_wide_summary <- clamped_df_wide %>%
 
 ```{r}
 # plot diff
-f <- clamped_df_wide %>% 
+f <- clamped_df_wide %>%
   ggplot(aes(x = exp, y = diff)) +
   geom_beeswarm() +
   geom_point(data = clamped_df_wide_summary, aes(x = exp, y = means), size = 3, colour = "red") +
   geom_errorbar(data = clamped_df_wide_summary, aes(x = exp, y = means, ymin = means - cis, ymax = means + cis), width = 0.2, colour = "red")
 
-f 
+f
 ```
 
 
@@ -165,21 +166,23 @@ f
 ### Per-trial, starting from rotation-switch
 ```{r}
 # isolate only the dr_30 and dr_60 data
-rotated_dr <- all_data %>% 
-  filter(exp %in% c("dr_30", "dr_60"), 
-         type == "reach", dual_rotation != 0)
+rotated_dr <- all_data %>%
+  filter(
+    exp %in% c("dr_30", "dr_60"),
+    type == "reach", dual_rotation != 0
+  )
 
 # make a column combining ppid and rotation_switch
-rotated_dr <- rotated_dr %>% 
+rotated_dr <- rotated_dr %>%
   mutate(ppid_miniblock_num = paste0(ppid, "_", miniblock_num))
 
 # plot
-f <- rotated_dr %>% 
+f <- rotated_dr %>%
   ggplot(aes(x = trial_in_miniblock, y = obj_angle_3cm_move, colour = miniblock_num)) +
-  facet_wrap(~exp*dual_rotation) 
+  facet_wrap(~ exp * dual_rotation)
 
 # add lines grouped by ppid
-f <- f + geom_line(aes(group = ppid_miniblock_num), alpha = 0.05) 
+f <- f + geom_line(aes(group = ppid_miniblock_num), alpha = 0.05)
 
 # add horizontal lines at -60, -30, 0, 30, 60
 f <- f + geom_hline(yintercept = c(-60, -30, 0, 30, 60), linetype = "dashed", alpha = 0.5)
@@ -196,12 +199,14 @@ f
 ### Slope and intercept following rotation-switches, vs miniblock_num
 ```{r}
 # isolate only the dr_30 and dr_60 data
-rotated_dr <- all_data %>% 
-  filter(exp %in% c("dr_30", "dr_60"), 
-         type == "reach", dual_rotation != 0)
+rotated_dr <- all_data %>%
+  filter(
+    exp %in% c("dr_30", "dr_60"),
+    type == "reach", dual_rotation != 0
+  )
 
 # summarise
-rotated_dr_summary <- rotated_dr %>% 
+rotated_dr_summary <- rotated_dr %>%
   group_by(exp, ppid, miniblock_num, obj_shape_sign) %>%
   summarise(
     slopes = first(obj_angles_when_rot_change_slope),
@@ -209,25 +214,24 @@ rotated_dr_summary <- rotated_dr %>%
     means = first(obj_angles_when_rot_change)
   )
 # multiply slops and intercepts by obj_shape_sign
-rotated_dr_summary <- rotated_dr_summary %>% 
-  mutate(slopes = slopes * obj_shape_sign,
-         intercepts = intercepts * obj_shape_sign,
-         means = means * obj_shape_sign)
+rotated_dr_summary <- rotated_dr_summary %>%
+  mutate(
+    slopes = slopes * obj_shape_sign,
+    intercepts = intercepts * obj_shape_sign,
+    means = means * obj_shape_sign
+  )
 
 # make second order summary
-rotated_dr_2nd_order_summary <- rotated_dr_summary %>% 
+rotated_dr_2nd_order_summary <- rotated_dr_summary %>%
   group_by(exp, ppid) %>%
   summarise(
-    rate_of_change_means = mean(means),
-    cis = vector_confint(means),
-    rate_of_change_slopes = mean(slopes),
-    cis = vector_confint(slopes),
-    rate_of_change_intercepts = mean(intercepts),
-    cis = vector_confint(intercepts)
+    rate_of_change_means = slope(miniblock_num, means),
+    rate_of_change_slopes = slope(miniblock_num, slopes),
+    rate_of_change_intercepts = slope(miniblock_num, intercepts)
   )
 
 # third order summary
-rotated_dr_exp_summary <- rotated_dr_2nd_order_summary %>% 
+rotated_dr_exp_summary <- rotated_dr_2nd_order_summary %>%
   group_by(exp) %>%
   summarise(
     mean_rate_of_change_means = mean(rate_of_change_means),
@@ -242,100 +246,275 @@ rotated_dr_exp_summary <- rotated_dr_2nd_order_summary %>%
 
 ```{r}
 # plot slopes
-f <- rotated_dr_summary %>% 
+f <- rotated_dr_summary %>%
   ggplot(aes(x = miniblock_num, y = slopes, colour = ppid)) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE) +
-  facet_wrap(~exp) + 
-  labs(x = "Miniblock Number", y = "Slope of Angle Change On Shape Switch", colour = "Participant") + 
+  facet_wrap(~exp) +
+  labs(x = "Miniblock Number", y = "Slope of Angle Change On Shape Switch", colour = "Participant") +
   theme(legend.position = "none")
 
 # save plot
-# ggsave("../plots/slopes.png", f, width = 30, height = 20)
+ggsave("../plots/switch_block_slopes.png", f, width = 30, height = 20)
 
 f
 ```
 
 ```{r}
 # plot intercepts
-f <- rotated_dr_summary %>% 
+f <- rotated_dr_summary %>%
   ggplot(aes(x = miniblock_num, y = intercepts, colour = ppid)) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE) +
-  facet_wrap(~exp) + 
-  labs(x = "Miniblock Number", y = "Intercept of Angle Change On Shape Switch", colour = "Participant") + 
+  facet_wrap(~exp) +
+  labs(x = "Miniblock Number", y = "Intercept of Angle Change On Shape Switch", colour = "Participant") +
   theme(legend.position = "none")
 
 # save plot
-# ggsave("../plots/intercepts.png", f, width = 30, height = 20)
+ggsave("../plots/switch_block_intercepts.png", f, width = 30, height = 20)
 
 f
 ```
 
 ```{r}
 # plot means
-f <- rotated_dr_summary %>% 
+f <- rotated_dr_summary %>%
   ggplot(aes(x = miniblock_num, y = means, colour = ppid)) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE) +
-  facet_wrap(~exp) + 
-  labs(x = "Miniblock Number", y = "Mean Angle Change On Shape Switch", colour = "Participant") + 
+  facet_wrap(~exp) +
+  labs(x = "Miniblock Number", y = "Mean Angle Change On Shape Switch", colour = "Participant") +
   theme(legend.position = "none")
 
 # save plot
-# ggsave("../plots/means.png", f, width = 30, height = 20)
+ggsave("../plots/switch_block_means.png", f, width = 30, height = 20)
 
 f
 ```
 
 ```{r}
 # plot rate of change of means using beeswarm
-f <- rotated_dr_2nd_order_summary %>% 
+f <- rotated_dr_2nd_order_summary %>%
   ggplot(aes(x = exp, y = rate_of_change_means, colour = ppid)) +
   geom_beeswarm() +
   geom_point(data = rotated_dr_exp_summary, aes(x = exp, y = mean_rate_of_change_means), size = 3, colour = "red") +
   geom_errorbar(data = rotated_dr_exp_summary, aes(x = exp, y = mean_rate_of_change_means, ymin = mean_rate_of_change_means - means_cis, ymax = mean_rate_of_change_means + means_cis), width = 0.2, colour = "red") +
-  labs(x = "Experiment", y = "Rate of Change of Mean Angle Change On Shape Switch", colour = "Participant") + 
+  labs(x = "Experiment", y = "Rate of Change of Mean Angle Change On Shape Switch", colour = "Participant") +
   theme(legend.position = "none")
 
 # save plot
-# ggsave("../plots/means_rate_of_change.png", f, width = 30, height = 20)
+ggsave("../plots/switch_block_means_rate_of_change.png", f, width = 30, height = 20)
 
 f
 ```
 
 ```{r}
 # plot rate of change of slopes using beeswarm
-f <- rotated_dr_2nd_order_summary %>% 
+f <- rotated_dr_2nd_order_summary %>%
   ggplot(aes(x = exp, y = rate_of_change_slopes, colour = ppid)) +
   geom_beeswarm() +
   geom_point(data = rotated_dr_exp_summary, aes(x = exp, y = mean_rate_of_change_slopes), size = 3, colour = "red") +
   geom_errorbar(data = rotated_dr_exp_summary, aes(x = exp, y = mean_rate_of_change_slopes, ymin = mean_rate_of_change_slopes - slopes_cis, ymax = mean_rate_of_change_slopes + slopes_cis), width = 0.2, colour = "red") +
-  labs(x = "Experiment", y = "Rate of Change of Slope of Angle Change On Shape Switch", colour = "Participant") + 
+  labs(x = "Experiment", y = "Rate of Change of Slope of Angle Change On Shape Switch", colour = "Participant") +
   theme(legend.position = "none")
 
 # save plot
-# ggsave("../plots/slopes_rate_of_change.png", f, width = 30, height = 20)
+ggsave("../plots/switch_block_slopes_rate_of_change.png", f, width = 30, height = 20)
 
 f
 ```
 
 ```{r}
 # plot rate of change of intercepts using beeswarm
-f <- rotated_dr_2nd_order_summary %>% 
+f <- rotated_dr_2nd_order_summary %>%
   ggplot(aes(x = exp, y = rate_of_change_intercepts, colour = ppid)) +
   geom_beeswarm() +
   geom_point(data = rotated_dr_exp_summary, aes(x = exp, y = mean_rate_of_change_intercepts), size = 3, colour = "red") +
   geom_errorbar(data = rotated_dr_exp_summary, aes(x = exp, y = mean_rate_of_change_intercepts, ymin = mean_rate_of_change_intercepts - intercepts_cis, ymax = mean_rate_of_change_intercepts + intercepts_cis), width = 0.2, colour = "red") +
-  labs(x = "Experiment", y = "Rate of Change of Intercept of Angle Change On Shape Switch", colour = "Participant") + 
+  labs(x = "Experiment", y = "Rate of Change of Intercept of Angle Change On Shape Switch", colour = "Participant") +
   theme(legend.position = "none")
 
 # save plot
-# ggsave("../plots/intercepts_rate_of_change.png", f, width = 30, height = 20)
+ggsave("../plots/switch_block_intercepts_rate_of_change.png", f, width = 30, height = 20)
 
 f
+```
+### Changes to first trial after rotation-switch over time
+```{r}
+# isolate only the dr_30 and dr_60 data
+rotated_dr <- all_data %>%
+  filter(
+    exp %in% c("dr_30", "dr_60"),
+    type == "reach", dual_rotation != 0
+  )
+
+# summarise
+rotated_dr_summary <- rotated_dr %>%
+  group_by(exp, ppid, miniblock_num, obj_shape_sign) %>%
+  summarise(
+    first_switch_trial = first(obj_angle_3cm_move),
+    mean_second_2_switch_trials = mean(obj_angle_3cm_move[2:3]),
+    rate_second_2_switch_trials = slope(1:2, obj_angle_3cm_move[2:3]),
+    intercept_second_2_switch_trials = intercept(1:2, obj_angle_3cm_move[2:3], slope(1:2, obj_angle_3cm_move[2:3]))
+  )
+
+
+# multiply slopes and intercepts by obj_shape_sign
+rotated_dr_summary <- rotated_dr_summary %>%
+  mutate(
+    first_switch_trial = first_switch_trial * obj_shape_sign,
+    mean_second_2_switch_trials = mean_second_2_switch_trials * obj_shape_sign,
+    rate_second_2_switch_trials = rate_second_2_switch_trials * obj_shape_sign,
+    intercept_second_2_switch_trials = intercept_second_2_switch_trials * obj_shape_sign
+  )
+
+
+# make second order summary
+rotated_dr_2nd_order_summary <- rotated_dr_summary %>%
+  group_by(exp, ppid) %>%
+  summarise(
+    rate_of_change_first_switch = slope(miniblock_num, first_switch_trial),
+    rate_of_change_2_means = slope(miniblock_num, mean_second_2_switch_trials),
+    rate_of_change_2_rate = slope(miniblock_num, rate_second_2_switch_trials),
+    rate_of_change_2_intercept = slope(miniblock_num, intercept_second_2_switch_trials)
+  )
+
+# third order summary
+rotated_dr_exp_summary <- rotated_dr_2nd_order_summary %>%
+  group_by(exp) %>%
+  summarise(
+    mean_rate_of_change_first_switch = mean(rate_of_change_first_switch),
+    ci_rate_of_change_first_switch = vector_confint(rate_of_change_first_switch),
+    mean_rate_of_change_2_means = mean(rate_of_change_2_means),
+    ci_rate_of_change_2_means = vector_confint(rate_of_change_2_means),
+    mean_rate_of_change_2_rate = mean(rate_of_change_2_rate),
+    ci_rate_of_change_2_rate = vector_confint(rate_of_change_2_rate),
+    mean_rate_of_change_2_intercept = mean(rate_of_change_2_intercept),
+    ci_rate_of_change_2_intercept = vector_confint(rate_of_change_2_intercept)
+  )
+```
+```{r}
+# plot first trial after switch
+f <- rotated_dr_summary %>%
+  ggplot(aes(x = miniblock_num, y = first_switch_trial, colour = ppid)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~exp) +
+  labs(x = "Miniblock Number", y = "Hand-Angle on First Switch Trial", colour = "Participant") +
+  theme(legend.position = "none")
+
+# save plot
+ggsave("../plots/first_switch.png", f, width = 15, height = 10)
+
+f
+
+# plot summary of first trial after switch
+f2 <- rotated_dr_2nd_order_summary %>%
+  ggplot(aes(x = exp, y = rate_of_change_first_switch, colour = ppid)) +
+  geom_beeswarm() +
+  geom_point(data = rotated_dr_exp_summary, aes(x = exp, y = mean_rate_of_change_first_switch), size = 3, colour = "red") +
+  geom_errorbar(data = rotated_dr_exp_summary, aes(x = exp, y = mean_rate_of_change_first_switch, ymin = mean_rate_of_change_first_switch - ci_rate_of_change_first_switch, ymax = mean_rate_of_change_first_switch + ci_rate_of_change_first_switch), width = 0.2, colour = "red") +
+  labs(x = "Experiment", y = "Rate of Change of Hand-Angle on First Switch Trials", colour = "Participant") +
+  theme(legend.position = "none")
+
+# save plot
+ggsave("../plots/first_switch_summary.png", f2, width = 15, height = 10)
+
+f2
+```
+```{r}
+# plot mean of second and third trials after switch
+f <- rotated_dr_summary %>%
+  ggplot(aes(x = miniblock_num, y = mean_second_2_switch_trials, colour = ppid)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~exp) +
+  labs(x = "Miniblock Number", y = "Mean Hand-Angle on Second and Third Switch Trials", colour = "Participant") +
+  theme(legend.position = "none")
+
+# save plot
+ggsave("../plots/second2_switch_mean.png", f, width = 15, height = 10)
+
+f
+
+# plot summary of mean of second and third trials after switch
+f2 <- rotated_dr_2nd_order_summary %>%
+  ggplot(aes(x = exp, y = rate_of_change_2_means, colour = ppid)) +
+  geom_beeswarm() +
+  geom_point(data = rotated_dr_exp_summary, aes(x = exp, y = mean_rate_of_change_2_means), size = 3, colour = "red") +
+  geom_errorbar(data = rotated_dr_exp_summary, aes(x = exp, y = mean_rate_of_change_2_means, ymin = mean_rate_of_change_2_means - ci_rate_of_change_2_means, ymax = mean_rate_of_change_2_means + ci_rate_of_change_2_means), width = 0.2, colour = "red") +
+  labs(x = "Experiment", y = "Rate of Change of Mean Hand-Angle on Second and Third Switch Trials", colour = "Participant") +
+  theme(legend.position = "none")
+
+# save plot
+ggsave("../plots/second2_switch_mean_summary.png", f2, width = 15, height = 10)
+
+f2
+```
+```{r}
+# plot rate of change of second and third trials after switch
+f <- rotated_dr_summary %>%
+  ggplot(aes(x = miniblock_num, y = rate_second_2_switch_trials, colour = ppid)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~exp) +
+  labs(x = "Miniblock Number", y = "Rate of Change of Hand-Angle on Second and Third Switch Trials", colour = "Participant") +
+  theme(legend.position = "none")
+
+# save plot
+ggsave("../plots/second2_switch_rate.png", f, width = 15, height = 10)
+
+f
+
+# plot summary of rate of change of second and third trials after switch
+f2 <- rotated_dr_2nd_order_summary %>%
+  ggplot(aes(x = exp, y = rate_of_change_2_rate, colour = ppid)) +
+  geom_beeswarm() +
+  geom_point(data = rotated_dr_exp_summary, aes(x = exp, y = mean_rate_of_change_2_rate), size = 3, colour = "red") +
+  geom_errorbar(data = rotated_dr_exp_summary, aes(x = exp, y = mean_rate_of_change_2_rate, ymin = mean_rate_of_change_2_rate - ci_rate_of_change_2_rate, ymax = mean_rate_of_change_2_rate + ci_rate_of_change_2_rate), width = 0.2, colour = "red") +
+  labs(x = "Experiment", y = "Rate of Change of Rate of Change of Hand-Angle on Second and Third Switch Trials", colour = "Participant") +
+  theme(legend.position = "none")
+
+# save plot
+ggsave("../plots/second2_switch_rate_summary.png", f2, width = 15, height = 10)
+
+f2
+```
+```{r}
+# plot intercept of second and third trials after switch
+f <- rotated_dr_summary %>%
+  ggplot(aes(x = miniblock_num, y = intercept_second_2_switch_trials, colour = ppid)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~exp) +
+  labs(x = "Miniblock Number", y = "Intercept of Hand-Angle on Second and Third Switch Trials", colour = "Participant") +
+  theme(legend.position = "none")
+
+# save plot
+ggsave("../plots/second2_switch_intercept.png", f, width = 15, height = 10)
+
+f
+
+# plot summary of intercept of second and third trials after switch
+f2 <- rotated_dr_2nd_order_summary %>%
+  ggplot(aes(x = exp, y = rate_of_change_2_intercept, colour = ppid)) +
+  geom_beeswarm() +
+  geom_point(data = rotated_dr_exp_summary, aes(x = exp, y = mean_rate_of_change_2_intercept), size = 3, colour = "red") +
+  geom_errorbar(data = rotated_dr_exp_summary, aes(x = exp, y = mean_rate_of_change_2_intercept, ymin = mean_rate_of_change_2_intercept - ci_rate_of_change_2_intercept, ymax = mean_rate_of_change_2_intercept + ci_rate_of_change_2_intercept), width = 0.2, colour = "red") +
+  labs(x = "Experiment", y = "Rate of Change of Intercept of Hand-Angle on Second and Third Switch Trials", colour = "Participant") +
+  theme(legend.position = "none")
+
+# save plot
+ggsave("../plots/second2_switch_intercept_summary.png", f2, width = 15, height = 10)
+
+f2
 ```
 
 
 
 Stats for the above plot
+
+```{r}
+# Fin
+```
+
