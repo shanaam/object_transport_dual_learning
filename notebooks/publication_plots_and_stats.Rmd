@@ -1,0 +1,106 @@
+---
+title: "Object Transport Analysis"
+author: "Shanaa Modchalingam"
+date: '2023'
+output: 
+  html_notebook:
+    toc: true
+    toc_float: true
+    number_sections: true
+    df_print: paged
+    
+---
+
+```{r setup, include=FALSE, warning=FALSE}
+rm(list = ls()) # clean environment
+
+source("../src/helper_funcs.R")
+library(data.table)
+library(tidyverse)
+library(future) # for parallel processing
+library(collections)
+library(ggbeeswarm)
+
+# Helper functions
+##### Helper functions #####
+slope <- function(x, y) {
+  return(cov(x, y) / var(x))
+}
+
+intercept <- function(x, y, slope) {
+  b <- mean(y) - (slope * mean(x))
+  return(b)
+}
+```
+
+## Data Import
+
+```{r}
+# import data
+data_path <- "../data/preprocessed/omnibus/omnibus_bl_corrected.csv"
+
+all_data <- fread(data_path)
+```
+
+```{r}
+## Setup ##
+palette <- dict(
+  list(
+    "cube" = "#6aafd2",
+    "sphere" = "#f07c04"
+  )
+)
+# make any and all summary dfs here
+by_trial_df <- all_data %>%
+  group_by(exp, type, trial_num) %>%
+  summarise(
+    mean_obj_angle_3cm_move = mean(obj_angle_3cm_move),
+    ci_obj_angle_3cm_move = vector_confint(obj_angle_3cm_move),
+    mean_obj_time_start_move = mean(obj_time_start_move),
+    ci_obj_time_start_move = vector_confint(obj_time_start_move),
+    mean_obj_time_reach = mean(obj_time_reach),
+    ci_obj_time_reach = vector_confint(obj_time_reach),
+    mean_obj_time_total_move = mean(obj_time_total_move),
+    ci_obj_time_total_move = vector_confint(obj_time_total_move),
+    mean_hand_angle_3cm_move = mean(hand_angle_3cm_move),
+    ci_hand_angle_3cm_move = vector_confint(hand_angle_3cm_move),
+    mean_hand_time_start_move = mean(hand_time_start_move),
+    ci_hand_time_start_move = vector_confint(hand_time_start_move),
+    mean_hand_time_reach = mean(hand_time_reach),
+    ci_hand_time_reach = vector_confint(hand_time_reach),
+    mean_hand_time_total_move = mean(hand_time_total_move),
+    ci_hand_time_total_move = vector_confint(hand_time_total_move),
+  )
+
+
+## Isolate experiments ##
+sr_30_all <- all_data %>%
+  filter(exp == "sr_30")
+
+sr_30_training <- sr_30_all %>%
+  filter(block_num == 16) %>%
+  mutate(unsigned_angle = obj_angle_3cm_move*obj_shape_sign*-1)
+```
+
+```{r}
+# plot sr_30_training, obj_angle_3cm_move
+p <- ggplot(sr_30_training, aes(x = trial_num, y = unsigned_angle, color = ppid)) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none"
+  ) +
+  labs(
+    x = "Trial Number",
+    y = "Angle at 3cm (degrees)"
+  ) +
+  geom_line()
+
+p
+```
+
+
+```{r}
+# empty
+```
+

@@ -94,6 +94,7 @@ make_bl_corrected_omnibus <- function() {
 
   # remove rows where hand_angle_3cm_move is 3 standard deviations away from the mean
   baseline_df <- baseline_df %>%
+    group_by(exp, ppid, type, hand) %>%
     filter(abs(mean(hand_angle_3cm_move) - hand_angle_3cm_move) < 3 * abs(sd(hand_angle_3cm_move))) %>%
     filter(abs(mean(obj_angle_3cm_move) - obj_angle_3cm_move) < 3 * abs(sd(obj_angle_3cm_move)))
 
@@ -126,6 +127,11 @@ make_bl_corrected_omnibus <- function() {
   # rename the rotation_switch column to miniblock_num
   omnibus_df <- omnibus_df %>%
     rename(miniblock_num = rotation_switch)
+  
+  #### Outlier Removal ####
+  omnibus_df <- omnibus_df %>%
+    group_by(exp, ppid, type, hand) %>%
+    filter(abs(mean(obj_angle_3cm_move) - obj_angle_3cm_move) < 3 * abs(sd(obj_angle_3cm_move)))
 
   return(omnibus_df)
 }
