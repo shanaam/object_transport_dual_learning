@@ -108,12 +108,15 @@ make_single_rot_file <- function(exp_index) {
 
     df_rotated <- df %>% filter(type == "rotated")
     
-    
+    # label positive and negative object shape
     if (df_rotated[1,]$dual_rotation == 30) {
       df$positive_obj_shape <- df_rotated[1,]$obj_shape
     } else {
       df$positive_obj_shape <- opposite_obj_shape$get(df_rotated[1,]$obj_shape)
     }
+    
+    # label trainedfirst object shape
+    df$trainedfirst_obj_shape <- df_rotated[1,]$obj_shape
 
     # change the column name pick_up_time to step_time
     df <- df %>% rename(step_time = pick_up_time)
@@ -146,6 +149,9 @@ make_dual_30_file <- function(exp_index) {
     df_30 <- df %>% filter(dual_rotation == 30)
     first_obj_shape <- df_30[1,]$obj_shape
     df$positive_obj_shape <- first_obj_shape
+    
+    # label trainedfirst object shape
+    df$trainedfirst_obj_shape <- df_30[1,]$obj_shape
 
     # add miniblocks
     df <- add_miniblocks(df)
@@ -175,6 +181,9 @@ make_dual_60_file <- function(exp_index) {
     df_60 <- df %>% filter(dual_rotation == 60)
     first_obj_shape <- df_60[1,]$obj_shape
     df$positive_obj_shape <- first_obj_shape
+    
+    # label trainedfirst object shape
+    df$trainedfirst_obj_shape <- df_60[1,]$obj_shape
 
     # add miniblocks
     df <- add_miniblocks(df)
