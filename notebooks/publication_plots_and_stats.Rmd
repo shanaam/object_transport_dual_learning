@@ -33,16 +33,13 @@ intercept <- function(x, y, slope) {
 }
 ```
 
-## Data Import
-
+## Data Import and Summaries
 ```{r}
 # import data
 data_path <- "../data/preprocessed/omnibus/omnibus_bl_corrected.csv"
 
 all_data <- fread(data_path)
-```
 
-```{r}
 ## Setup ##
 palette <- dict(
   list(
@@ -73,28 +70,201 @@ by_trial_df <- all_data %>%
   )
 
 
-## Isolate experiments ##
+## Isolate experiments and summarize ##
 sr_30_all <- all_data %>%
   filter(exp == "sr_30")
 
-sr_30_training <- sr_30_all %>%
+sr_30__ppt_training <- sr_30_all %>%
   filter(block_num == 16) %>%
-  mutate(unsigned_angle = obj_angle_3cm_move*obj_shape_sign*-1)
-```
+  mutate(unsigned_angle = obj_angle_3cm_move * obj_shape_sign * -1)
 
+# label trials_sets_1 and 2 with case_when
+sr_30__ppt_training <- sr_30__ppt_training %>%
+  mutate(trial_set = case_when(
+    trial_num <= 141 ~ 1,
+    trial_num >= 316 ~ 2,
+    TRUE ~ 100
+  ))
+
+sr_30_exp_training <- sr_30__ppt_training %>%
+  group_by(trial_num) %>% # note: only one where don't need to group_by ppid
+  summarise(
+    mean_unsigned_angle = mean(unsigned_angle),
+    ci_unsigned_angle = vector_confint(unsigned_angle)
+  )
+
+sr_30_ppt_trial_sets <- sr_30__ppt_training %>%
+  filter(trial_set < 5) %>%
+  group_by(ppid, trial_set) %>%
+  summarise(
+    mean_trial_set_angle = mean(unsigned_angle)
+  )
+
+sr_30_ppt_trial_sets$trial_set <- as.factor(sr_30_ppt_trial_sets$trial_set)
+
+sr_30_trial_set_devs <- sr_30_ppt_trial_sets %>%
+  group_by(trial_set) %>%
+  summarise(
+    trial_set_mean = mean(mean_trial_set_angle),
+    trial_set_ci = vector_confint(mean_trial_set_angle)
+  )
+```
+# S30 Training per-trial plot
 ```{r}
-# plot sr_30_training, obj_angle_3cm_move
-p <- ggplot(sr_30_training, aes(x = trial_num, y = unsigned_angle, color = ppid)) +
-  theme_bw() +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "none"
+data <- sr_30_exp_training
+
+# set up plot
+p <- data %>%
+  ggplot(
+    aes(
+      x = trial_num - 138, y = mean_unsigned_angle
+    )
   ) +
+  theme_classic() +
+  theme(legend.position = "none") +
   labs(
     x = "Trial Number",
-    y = "Angle at 3cm (degrees)"
+    y = "Angular Error (°)"
+  )
+
+# add horizontal lines
+p <- p +
+  geom_hline(
+    yintercept = c(0, 30), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "solid"
   ) +
-  geom_line()
+  geom_hline(
+    yintercept = c(15), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "dashed"
+  )
+
+# add a grey box behind trial sets
+p <- p +
+  geom_rect(
+    xmin = 1, xmax = 3,
+    ymin = -5, ymax = 30,
+    colour = "#CCCCCC", fill = "#CCCCCC"
+  ) +
+  geom_rect(
+    xmin = 178, xmax = 180,
+    ymin = -5, ymax = 30,
+    colour = "#CCCCCC", fill = "#CCCCCC"
+  )
+
+p <- p +
+  scale_y_continuous(
+    limits = c(-15, 40),
+    breaks = c(0, 15, 30),
+    labels = c(0, 15, 30)
+  ) +
+  scale_x_continuous(
+    limits = c(0, 180),
+    breaks = c(0, 60, 120, 180),
+    labels = c(0, 60, 120, 180)
+  )
+
+# set font size to 11
+p <- p +
+  theme(text = element_text(size = 11))
+
+# add confidence intervals
+p <- p + geom_ribbon(
+  aes(
+    ymin = mean_unsigned_angle - ci_unsigned_angle,
+    ymax = mean_unsigned_angle + ci_unsigned_angle
+  ),
+  fill = "#6aafd2", colour = NA, alpha = 0.3
+)
+
+# add data
+p <- p + geom_line(colour = "#6aafd2")
+
+
+# save
+ggsave(
+  p,
+  filename = "../plots/paper_figs/sr_30_training.pdf", device = "pdf",
+  height = 4, width = 6
+)
+
+p
+```
+# S30 Training trial set plot
+```{r}
+data_ppt <- sr_30_ppt_trial_sets
+data_trial_set <- sr_30_trial_set_devs
+
+# set up plot
+p <- data_trial_set %>%
+  ggplot(
+    aes(
+      x = trial_set, y = trial_set_mean,
+      color = trial_set
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(
+    x = "Trial Number",
+    y = NULL
+  )
+
+# add horizontal lines
+p <- p +
+  geom_hline(
+    yintercept = c(0, 30), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "solid"
+  ) +
+  geom_hline(
+    yintercept = c(15), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "dashed"
+  )
+
+# add axis ticks
+p <- p +
+  scale_y_continuous(
+    limits = c(-15, 40),
+    breaks = c(0, 15, 30),
+    labels = c(0, 15, 30)
+  )
+
+# set font size to 11
+p <- p +
+  theme(text = element_text(size = 11))
+
+# add data points
+p <- p +
+    geom_beeswarm(
+        data = data_ppt,
+        aes(y = mean_trial_set_angle),
+        alpha = 0.1,
+        size = 1
+    ) +
+    geom_linerange(aes(
+        ymin = trial_set_mean - trial_set_ci,
+        ymax = trial_set_mean + trial_set_ci
+    ), alpha = 0.5, lwd = 2)
+
+p <- p + 
+  scale_color_manual(
+    values = c(
+      "#f07c04", "#a30f15"
+      )
+    )
+
+p <- p + 
+  scale_x_discrete(
+    labels = c(
+      "Init", "Fin"
+      )
+  )
+
+# save
+ggsave(
+  p,
+  filename = "../plots/paper_figs/sr_30_trial_set.pdf", device = "pdf",
+  height = 4, width = 2
+)
 
 p
 ```
