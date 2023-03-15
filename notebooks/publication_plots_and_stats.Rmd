@@ -21,6 +21,13 @@ library(future) # for parallel processing
 library(collections)
 library(ggbeeswarm)
 
+library(ez) # for ANOVAs
+library(effectsize) # for eta-squared
+library(BayesFactor)
+library(bayestestR)
+
+library(Reach) # from github: thartbm/Reach
+
 # Helper functions
 ##### Helper functions #####
 slope <- function(x, y) {
@@ -94,6 +101,42 @@ sr_30_clamped <- sr_30_all %>%
     TRUE ~ "untrained_hand"
   )) %>%
   mutate(trained_obj_hand_factor = paste0(trained_obj_factor, "_", trained_hand_factor))
+
+### DR 30 ###
+dr_30_all <- all_data %>%
+  filter(exp == "dr_30") %>%
+  mutate(unsigned_angle = obj_angle_3cm_move * obj_shape_sign * -1)
+
+dr_30_ppt_training <- dr_30_all %>%
+  filter(block_num == 7) %>%
+  mutate(trial_set = case_when(
+    trial_num <= 78 ~ 1,
+    trial_num >= 253 ~ 2,
+    TRUE ~ 100
+  ))
+
+# note: blocks 8 and 11 are include clamps, 13 is exclude clamps
+dr_30_incl_clamp <- dr_30_all %>%
+  filter(block_num %in% c(8, 11))
+
+dr_30_excl_clamp <- dr_30_all %>%
+  filter(block_num %in% c(13, 14))
+
+# load in both_ppt_trainng
+both_ppt_training <- fread("../data/misc/both_ppt_training.csv")
+
+# # both experiment rbind
+# both_ppt_training <- rbind(sr_30_ppt_training, dr_30_ppt_training)
+#
+# both_ppt_training <- both_ppt_training %>%
+#   group_by(ppid) %>%
+#   mutate(
+#     learning_rate = Reach::exponentialFit(unsigned_angle)[1],
+#     asymptote = Reach::exponentialFit(unsigned_angle)[2]
+#   )
+#
+# # save the above as a csv
+# fwrite(both_ppt_training, "../data/misc/both_ppt_training.csv")
 ```
 # S30 Training per-trial plot
 ```{r}
@@ -277,29 +320,30 @@ ggsave(
 
 p
 ```
-
-
 # S30 Clamped
 ```{r}
 sr_30_ppt_clamped <- sr_30_clamped %>%
-  group_by(ppid, trained_obj_hand_factor) %>%
+  group_by(ppid, trained_obj_hand_factor, trained_obj_factor, trained_hand_factor) %>%
   summarise(
     ppt_mean_unsigned_angle = mean(unsigned_angle),
     ci_unsigned_angle = vector_confint(unsigned_angle)
   ) %>%
-  mutate (fixed_angle = case_when(
+  mutate(fixed_angle = case_when(
     (trained_obj_hand_factor == "untrained_obj_trained_hand") |
-    (trained_obj_hand_factor == "untrained_obj_untrained_hand") ~ ppt_mean_unsigned_angle * -1,
+      (trained_obj_hand_factor == "untrained_obj_untrained_hand") ~ ppt_mean_unsigned_angle * -1,
     TRUE ~ ppt_mean_unsigned_angle
   ))
 
+sr_30_ppt_clamped$trained_obj_hand_factor <- factor(sr_30_ppt_clamped$trained_obj_hand_factor)
+sr_30_ppt_clamped$trained_obj_factor <- factor(sr_30_ppt_clamped$trained_obj_factor)
+sr_30_ppt_clamped$trained_hand_factor <- factor(sr_30_ppt_clamped$trained_hand_factor)
 
 sr_30_obj_hand_clamped <- sr_30_ppt_clamped %>%
   group_by(trained_obj_hand_factor) %>%
   summarise(
     mean_unsigned_angle = mean(fixed_angle),
     ci_unsigned_angle = vector_confint(fixed_angle)
-  ) 
+  )
 data_ppt <- sr_30_ppt_clamped
 data_obj_hand_factor <- sr_30_obj_hand_clamped
 
@@ -307,11 +351,142 @@ data_obj_hand_factor <- sr_30_obj_hand_clamped
 p <- data_obj_hand_factor %>%
   ggplot(
     aes(
-      x = factor(trained_obj_hand_factor, levels = 
-                   c("trained_obj_trained_hand", "untrained_obj_trained_hand", 
-                 "trained_obj_untrained_hand", "untrained_obj_untrained_hand")),
+      x = factor(trained_obj_hand_factor,
+        levels =
+          c(
+            "trained_obj_trained_hand", "untrained_obj_trained_hand",
+            "trained_obj_untrained_hand", "untrained_obj_untrained_hand"
+          )
+      ),
       y = mean_unsigned_angle,
       color = trained_obj_hand_factor
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(
+    x = NULL,
+    y = "Angular Error (°)"
+  )
+
+# add horizontal lines
+p <- p +
+  geom_hline(
+    yintercept = c(0, 30), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "solid"
+  ) +
+  geom_hline(
+    yintercept = c(15), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "dashed"
+  )
+
+# add axis ticks
+p <- p +
+  scale_y_continuous(
+    # limits = c(-15, 40),
+    breaks = c(0, 15, 30),
+    labels = c(0, 15, 30)
+  )
+
+# set font size to 11
+p <- p +
+  theme(text = element_text(size = 11))
+
+# add data points
+p <- p +
+  geom_beeswarm(
+    data = data_ppt,
+    aes(
+      x = factor(trained_obj_hand_factor,
+        levels =
+          c(
+            "trained_obj_trained_hand", "untrained_obj_trained_hand",
+            "trained_obj_untrained_hand", "untrained_obj_untrained_hand"
+          )
+      ),
+      y = fixed_angle
+    ),
+    alpha = 0.1,
+    size = 1
+  ) +
+  geom_linerange(aes(
+    ymin = mean_unsigned_angle - ci_unsigned_angle,
+    ymax = mean_unsigned_angle + ci_unsigned_angle
+  ), alpha = 0.5, lwd = 2) +
+  geom_point()
+
+p <- p +
+  scale_color_manual(
+    values = c(
+      "#f07c04", "#a30f15",
+      "#f07c04", "#a30f15"
+    )
+  )
+
+p <- p +
+  scale_x_discrete(
+    breaks = c(
+      "trained_obj_trained_hand", "untrained_obj_trained_hand",
+      "trained_obj_untrained_hand", "untrained_obj_untrained_hand"
+    ),
+    labels = c(
+      "Trained Shape \nTrained Hand", "Unrained Shape \nTrained Hand",
+      "Trained Shape \nUntrained Hand", "Untrained Shape \nUntrained Hand"
+    )
+  )
+
+# # save
+# ggsave(
+#   p,
+#   filename = "../plots/paper_figs/sr_30_clamped.pdf", device = "pdf",
+#   height = 4, width = 4
+# )
+
+p
+```
+```{r}
+sr_30_ppt_clamped %>%
+  group_by(trained_obj_hand_factor) %>%
+  summarise(
+    mean = mean(fixed_angle),
+    sd = sd(fixed_angle),
+    ci = vector_confint(fixed_angle),
+    n = n()
+  )
+```
+
+```{r}
+temp_ANOVA <- aov(fixed_angle ~ trained_obj_factor * trained_hand_factor, data = sr_30_ppt_clamped)
+
+# show ANOVA + assumptions
+print(summary(temp_ANOVA), digits = 6)
+eta_squared(temp_ANOVA)
+TukeyHSD(temp_ANOVA)
+```
+```{r}
+bf <- anovaBF(fixed_angle ~ trained_obj_factor * trained_hand_factor, data = data.frame(sr_30_ppt_clamped), progress = FALSE)
+print(bf)
+bayesfactor_inclusion(bf)
+```
+
+
+# D30 Training per-trial plot
+```{r}
+dr_30_exp_training <- dr_30_ppt_training %>%
+  group_by(trial_num_in_block) %>%
+  summarise(
+    mean_unsigned_angle = mean(unsigned_angle),
+    ci_unsigned_angle = vector_confint(unsigned_angle)
+  )
+
+data <- dr_30_exp_training
+
+# set up plot
+p <- data %>%
+  ggplot(
+    aes(
+      x = trial_num_in_block,
+      y = mean_unsigned_angle
     )
   ) +
   theme_classic() +
@@ -332,13 +507,114 @@ p <- p +
     colour = "#CCCCCC", linetype = "dashed"
   )
 
+# add grey boxes behind trial sets
+p <- p +
+  geom_rect(
+    xmin = 1, xmax = 3,
+    ymin = -5, ymax = 30,
+    colour = "#CCCCCC", fill = "#CCCCCC"
+  ) +
+  geom_rect(
+    xmin = 178, xmax = 180,
+    ymin = -5, ymax = 30,
+    colour = "#CCCCCC", fill = "#CCCCCC"
+  )
+
+p <- p +
+  scale_y_continuous(
+    limits = c(-15, 40),
+    breaks = c(0, 15, 30),
+    labels = c(0, 15, 30)
+  ) +
+  scale_x_continuous(
+    limits = c(0, 180),
+    breaks = c(0, 60, 120, 180),
+    labels = c(0, 60, 120, 180)
+  )
+
+# set font size to 11
+p <- p +
+  theme(text = element_text(size = 11))
+
+# add confidence intervals
+p <- p + geom_ribbon(
+  aes(
+    ymin = mean_unsigned_angle - ci_unsigned_angle,
+    ymax = mean_unsigned_angle + ci_unsigned_angle
+  ),
+  fill = "#6aafd2", colour = NA, alpha = 0.3
+)
+
+# add data
+p <- p + geom_line(colour = "#6aafd2")
+
+# save
+ggsave(
+  p,
+  filename = "../plots/paper_figs/dr_30_training.pdf", device = "pdf",
+  height = 4, width = 6
+)
+
+p
+```
+
+# D30 include strategy clamped plot
+```{r}
+dr_30_ppt_incl_clamped <- dr_30_incl_clamp %>%
+  group_by(ppid, obj_shape_sign) %>%
+  summarise(
+    ppt_mean_angle = mean(obj_angle_3cm_move),
+    ppt_ci_angle = vector_confint(obj_angle_3cm_move)
+  )
+
+dr_30_ppt_incl_clamped$obj_shape_sign <- factor(
+  dr_30_ppt_incl_clamped$obj_shape_sign
+)
+
+dr_30_exp_incl_clamped <- dr_30_ppt_incl_clamped %>%
+  group_by(obj_shape_sign) %>%
+  summarise(
+    mean_angle = mean(ppt_mean_angle),
+    ci_angle = vector_confint(ppt_mean_angle)
+  )
+
+data_ppt <- dr_30_ppt_incl_clamped
+data_exp <- dr_30_exp_incl_clamped
+
+# set up plot
+p <- data_exp %>%
+  ggplot(
+    aes(
+      x = obj_shape_sign,
+      y = mean_angle,
+      color = obj_shape_sign
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(
+    x = "Shape",
+    y = "Angular Error (°)"
+  )
+
+# add horizontal lines
+p <- p +
+  geom_hline(
+    yintercept = c(0, 30), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "solid"
+  ) +
+  geom_hline(
+    yintercept = c(15), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "dashed"
+  )
+
 # add axis ticks
-# p <- p +
-#   scale_y_continuous(
-#     limits = c(-15, 40),
-#     breaks = c(0, 15, 30),
-#     labels = c(0, 15, 30)
-#   )
+p <- p +
+  scale_y_continuous(
+    # limits = c(-15, 40),
+    breaks = c(0, 15, 30),
+    labels = c(0, 15, 30)
+  )
 
 # set font size to 11
 p <- p +
@@ -349,49 +625,368 @@ p <- p +
   geom_beeswarm(
     data = data_ppt,
     aes(
-      x = factor(trained_obj_hand_factor, levels = 
-                   c("trained_obj_trained_hand", "untrained_obj_trained_hand", 
-                 "trained_obj_untrained_hand", "untrained_obj_untrained_hand")),
-      y = fixed_angle),
-    alpha = 0.1,
-    size = 1
+      x = obj_shape_sign,
+      y = ppt_mean_angle,
+      color = obj_shape_sign
+    ),
+    size = 1,
+    alpha = 0.1
   ) +
-  geom_linerange(aes(
-    ymin = mean_unsigned_angle - ci_unsigned_angle,
-    ymax = mean_unsigned_angle + ci_unsigned_angle
-  ), alpha = 0.5, lwd = 2) +
+  geom_linerange(
+    aes(
+      ymin = mean_angle - ci_angle,
+      ymax = mean_angle + ci_angle
+    ),
+    alpha = 0.5, lwd = 2
+  ) +
   geom_point()
 
 p <- p +
   scale_color_manual(
-    values = c(
-      "#f07c04", "#a30f15",
-      "#f07c04", "#a30f15"
-    )
-  )
-
-p <- p +
-  scale_x_discrete(
-    breaks = c("trained_obj_trained_hand", "untrained_obj_trained_hand", 
-               "trained_obj_untrained_hand", "untrained_obj_untrained_hand"),
-    labels = c(
-      "Trained Shape \nTrained Hand", "Unrained Shape \nTrained Hand",
-      "Trained Shape \nUntrained Hand", "Untrained Shape \nUntrained Hand"
-    )
+    values = c("#f07c04", "#a30f15")
   )
 
 # save
 ggsave(
   p,
-  filename = "../plots/paper_figs/sr_30_clamped.pdf", device = "pdf",
-  height = 4, width = 4
+  filename = "../plots/paper_figs/dr_30_incl_clamped.pdf", device = "pdf",
+  height = 4, width = 2
 )
 
 p
 ```
+```{r}
+dr_30_ppt_incl_clamped %>%
+  group_by(obj_shape_sign) %>%
+  summarise(
+    mean = mean(ppt_mean_angle),
+    sd = sd(ppt_mean_angle),
+    ci = vector_confint(ppt_mean_angle),
+    n = n()
+  )
+```
 
 
+```{r}
+temp_ANOVA <- aov(ppt_mean_angle ~ obj_shape_sign, data = dr_30_ppt_incl_clamped)
 
+# show ANOVA + assumptions
+print(summary(temp_ANOVA), digits = 6)
+eta_squared(temp_ANOVA)
+TukeyHSD(temp_ANOVA)
+```
+```{r}
+bf <- anovaBF(ppt_mean_angle ~ obj_shape_sign, data = data.frame(dr_30_ppt_incl_clamped), progress = FALSE)
+print(bf)
+bayesfactor_inclusion(bf)
+```
+
+# D30 exclude strategy clamped plot
+```{r}
+dr_30_ppt_excl_clamped <- dr_30_excl_clamp %>%
+  group_by(ppid, obj_shape_sign) %>%
+  summarise(
+    ppt_mean_angle = mean(obj_angle_3cm_move),
+    ppt_ci_angle = vector_confint(obj_angle_3cm_move)
+  )
+
+dr_30_ppt_excl_clamped$obj_shape_sign <- factor(
+  dr_30_ppt_excl_clamped$obj_shape_sign
+)
+
+dr_30_exp_excl_clamped <- dr_30_ppt_excl_clamped %>%
+  group_by(obj_shape_sign) %>%
+  summarise(
+    mean_angle = mean(ppt_mean_angle),
+    ci_angle = vector_confint(ppt_mean_angle)
+  )
+
+data_ppt <- dr_30_ppt_excl_clamped
+data_exp <- dr_30_exp_excl_clamped
+
+# set up plot
+p <- data_exp %>%
+  ggplot(
+    aes(
+      x = obj_shape_sign,
+      y = mean_angle,
+      color = obj_shape_sign
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(
+    x = "Shape",
+    y = "Angular Error (°)"
+  )
+
+# add horizontal lines
+p <- p +
+  geom_hline(
+    yintercept = c(0, 30), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "solid"
+  ) +
+  geom_hline(
+    yintercept = c(15), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "dashed"
+  )
+
+# add axis ticks
+p <- p +
+  scale_y_continuous(
+    # limits = c(-15, 40),
+    breaks = c(0, 15, 30),
+    labels = c(0, 15, 30)
+  )
+
+# set font size to 11
+p <- p +
+  theme(text = element_text(size = 11))
+
+# add data points
+p <- p +
+  geom_beeswarm(
+    data = data_ppt,
+    aes(
+      x = obj_shape_sign,
+      y = ppt_mean_angle,
+      color = obj_shape_sign
+    ),
+    size = 1,
+    alpha = 0.1
+  ) +
+  geom_linerange(
+    aes(
+      ymin = mean_angle - ci_angle,
+      ymax = mean_angle + ci_angle
+    ),
+    alpha = 0.5, lwd = 2
+  ) +
+  geom_point()
+
+p <- p +
+  scale_color_manual(
+    values = c("#f07c04", "#a30f15")
+  )
+
+# # save
+# ggsave(
+#   p,
+#   filename = "../plots/paper_figs/dr_30_excl_clamped.pdf", device = "pdf",
+#   height = 4, width = 2
+# )
+
+p
+```
+
+```{r}
+dr_30_ppt_excl_clamped %>%
+  group_by(obj_shape_sign) %>%
+  summarise(
+    mean = mean(ppt_mean_angle),
+    sd = sd(ppt_mean_angle),
+    ci = vector_confint(ppt_mean_angle),
+    n = n()
+  )
+```
+
+```{r}
+temp_ANOVA <- aov(ppt_mean_angle ~ obj_shape_sign, data = dr_30_ppt_excl_clamped)
+
+# show ANOVA + assumptions
+print(summary(temp_ANOVA), digits = 6)
+eta_squared(temp_ANOVA)
+TukeyHSD(temp_ANOVA)
+```
+```{r}
+bf <- anovaBF(ppt_mean_angle ~ obj_shape_sign, data = data.frame(dr_30_ppt_excl_clamped), progress = FALSE)
+print(bf)
+bayesfactor_inclusion(bf)
+```
+
+# Plot slope and asymptote for both_ppt_training
+```{r}
+# both_ppt_training <- both_ppt_training %>%
+#   group_by(ppid, exp) %>%
+#   summarise(
+#     ppt_learning_rate = first(learning_rate),
+#     ppt_asymptote = first(asymptote)
+#   )
+
+both_ppt_training$exp <- factor(both_ppt_training$exp)
+
+both_exp_training <- both_ppt_training %>%
+  group_by(exp) %>%
+  summarise(
+    mean_learning_rate = mean(ppt_learning_rate),
+    ci_learning_rate = vector_confint(ppt_learning_rate),
+    mean_asymptote = mean(ppt_asymptote),
+    ci_asymptote = vector_confint(ppt_asymptote)
+  )
+
+data_ppt <- both_ppt_training
+data_exp <- both_exp_training
+
+# set up plot
+p <- data_exp %>%
+  ggplot(
+    aes(
+      x = exp,
+      y = mean_learning_rate,
+      color = exp
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(
+    x = "Experiment",
+    y = "Learning Rate"
+  )
+
+# set font size to 11
+p <- p +
+  theme(text = element_text(size = 11))
+
+# add data points
+p <- p +
+  geom_beeswarm(
+    data = data_ppt,
+    aes(
+      x = exp,
+      y = ppt_learning_rate,
+      color = exp
+    ),
+    size = 1,
+    alpha = 0.1
+  ) +
+  geom_linerange(
+    aes(
+      ymin = mean_learning_rate - ci_learning_rate,
+      ymax = mean_learning_rate + ci_learning_rate
+    ),
+    alpha = 0.5, lwd = 2
+  ) +
+  geom_point()
+
+p <- p +
+  scale_color_manual(
+    values = c("#f07c04", "#a30f15")
+  )
+
+# save
+ggsave(
+  p,
+  filename = "../plots/paper_figs/both_ppt_training_learning_rate.pdf", device = "pdf",
+  height = 4, width = 2
+)
+
+p
+```
+```{r}
+both_ppt_training %>%
+  group_by(exp) %>%
+  summarise(
+    mean = mean(ppt_learning_rate),
+    sd = sd(ppt_learning_rate),
+    ci = vector_confint(ppt_learning_rate),
+    n = n()
+  )
+```
+
+```{r}
+temp_ANOVA <- aov(ppt_learning_rate ~ exp, data = both_ppt_training)
+
+# show ANOVA + assumptions
+print(summary(temp_ANOVA), digits = 6)
+eta_squared(temp_ANOVA)
+TukeyHSD(temp_ANOVA)
+```
+```{r}
+bf <- anovaBF(ppt_learning_rate ~ exp, data = data.frame(both_ppt_training), progress = FALSE)
+print(bf)
+bayesfactor_inclusion(bf)
+```
+
+```{r}
+# set up plot
+p <- data_exp %>%
+  ggplot(
+    aes(
+      x = exp,
+      y = mean_asymptote,
+      color = exp
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(
+    x = "Experiment",
+    y = "Asymptote"
+  )
+
+# set font size to 11
+p <- p +
+  theme(text = element_text(size = 11))
+
+# add data points
+p <- p +
+  geom_beeswarm(
+    data = data_ppt,
+    aes(
+      x = exp,
+      y = ppt_asymptote,
+      color = exp
+    ),
+    size = 1,
+    alpha = 0.1
+  ) +
+  geom_linerange(
+    aes(
+      ymin = mean_asymptote - ci_asymptote,
+      ymax = mean_asymptote + ci_asymptote
+    ),
+    alpha = 0.5, lwd = 2
+  ) +
+  geom_point()
+
+p <- p +
+  scale_color_manual(
+    values = c("#f07c04", "#a30f15")
+  )
+
+# save
+ggsave(
+  p,
+  filename = "../plots/paper_figs/both_ppt_training_asmptote.pdf", device = "pdf",
+  height = 4, width = 2
+)
+
+p
+```
+```{r}
+both_ppt_training %>%
+  group_by(exp) %>%
+  summarise(
+    mean = mean(ppt_asymptote),
+    sd = sd(ppt_asymptote),
+    ci = vector_confint(ppt_asymptote),
+    n = n()
+  )
+```
+
+```{r}
+temp_ANOVA <- aov(ppt_asymptote ~ exp, data = both_ppt_training)
+
+# show ANOVA + assumptions
+print(summary(temp_ANOVA), digits = 6)
+eta_squared(temp_ANOVA)
+TukeyHSD(temp_ANOVA)
+```
+```{r}
+bf <- anovaBF(ppt_asymptote ~ exp, data = data.frame(both_ppt_training), progress = FALSE)
+print(bf)
+bayesfactor_inclusion(bf)
+```
 ```{r}
 # empty
 ```
