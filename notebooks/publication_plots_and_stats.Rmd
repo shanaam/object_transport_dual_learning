@@ -38,6 +38,9 @@ intercept <- function(x, y, slope) {
   b <- mean(y) - (slope * mean(x))
   return(b)
 }
+
+# settings
+save_plots = TRUE
 ```
 
 ## Data Import and Summaries
@@ -127,14 +130,14 @@ both_ppt_training <- fread("../data/misc/both_ppt_training.csv")
 
 # # both experiment rbind
 # both_ppt_training <- rbind(sr_30_ppt_training, dr_30_ppt_training)
-#
+# 
 # both_ppt_training <- both_ppt_training %>%
 #   group_by(ppid) %>%
 #   mutate(
 #     learning_rate = Reach::exponentialFit(unsigned_angle)[1],
 #     asymptote = Reach::exponentialFit(unsigned_angle)[2]
 #   )
-#
+# 
 # # save the above as a csv
 # fwrite(both_ppt_training, "../data/misc/both_ppt_training.csv")
 ```
@@ -217,11 +220,13 @@ p <- p + geom_line(colour = "#6aafd2")
 
 
 # save
-ggsave(
+if (save_plots) {
+  ggsave(
   p,
   filename = "../plots/paper_figs/sr_30_training.pdf", device = "pdf",
   height = 4, width = 6
-)
+  )
+  }
 
 p
 ```
@@ -312,12 +317,14 @@ p <- p +
   )
 
 # save
-ggsave(
-  p,
-  filename = "../plots/paper_figs/sr_30_trial_set.pdf", device = "pdf",
-  height = 4, width = 2
-)
-
+if (save_plots) {
+  ggsave(
+    p,
+    filename = "../plots/paper_figs/sr_30_trial_set.pdf", device = "pdf",
+    height = 4, width = 2
+  )
+}
+  
 p
 ```
 # S30 Clamped
@@ -435,12 +442,14 @@ p <- p +
     )
   )
 
-# # save
-# ggsave(
-#   p,
-#   filename = "../plots/paper_figs/sr_30_clamped.pdf", device = "pdf",
-#   height = 4, width = 4
-# )
+# save
+if (save_plots) {
+  ggsave(
+    p,
+    filename = "../plots/paper_figs/sr_30_clamped.pdf", device = "pdf",
+    height = 4, width = 4
+  )
+}
 
 p
 ```
@@ -549,11 +558,13 @@ p <- p + geom_ribbon(
 p <- p + geom_line(colour = "#6aafd2")
 
 # save
-ggsave(
-  p,
-  filename = "../plots/paper_figs/dr_30_training.pdf", device = "pdf",
-  height = 4, width = 6
-)
+if (save_plots) {
+  ggsave(
+    p,
+    filename = "../plots/paper_figs/dr_30_training.pdf", device = "pdf",
+    height = 4, width = 6
+  )
+}
 
 p
 ```
@@ -647,11 +658,13 @@ p <- p +
   )
 
 # save
-ggsave(
-  p,
-  filename = "../plots/paper_figs/dr_30_incl_clamped.pdf", device = "pdf",
-  height = 4, width = 2
-)
+if (save_plots) {
+  ggsave(
+    p,
+    filename = "../plots/paper_figs/dr_30_incl_clamped.pdf", device = "pdf",
+    height = 4, width = 2
+  )
+}
 
 p
 ```
@@ -769,12 +782,14 @@ p <- p +
     values = c("#f07c04", "#a30f15")
   )
 
-# # save
-# ggsave(
-#   p,
-#   filename = "../plots/paper_figs/dr_30_excl_clamped.pdf", device = "pdf",
-#   height = 4, width = 2
-# )
+# save
+if (save_plots) {
+  ggsave(
+    p,
+    filename = "../plots/paper_figs/dr_30_excl_clamped.pdf", device = "pdf",
+    height = 4, width = 2
+  )
+}
 
 p
 ```
@@ -806,12 +821,12 @@ bayesfactor_inclusion(bf)
 
 # Plot slope and asymptote for both_ppt_training
 ```{r}
-# both_ppt_training <- both_ppt_training %>%
-#   group_by(ppid, exp) %>%
-#   summarise(
-#     ppt_learning_rate = first(learning_rate),
-#     ppt_asymptote = first(asymptote)
-#   )
+both_ppt_training <- both_ppt_training %>%
+  group_by(ppid, exp) %>%
+  summarise(
+    ppt_learning_rate = first(learning_rate),
+    ppt_asymptote = first(asymptote)
+  )
 
 both_ppt_training$exp <- factor(both_ppt_training$exp)
 
@@ -874,11 +889,13 @@ p <- p +
   )
 
 # save
-ggsave(
-  p,
-  filename = "../plots/paper_figs/both_ppt_training_learning_rate.pdf", device = "pdf",
-  height = 4, width = 2
-)
+if (save_plots) {
+  ggsave(
+    p,
+    filename = "../plots/paper_figs/both_ppt_training_learning_rate.pdf", device = "pdf",
+    height = 4, width = 2
+  )
+}
 
 p
 ```
@@ -955,11 +972,13 @@ p <- p +
   )
 
 # save
-ggsave(
-  p,
-  filename = "../plots/paper_figs/both_ppt_training_asmptote.pdf", device = "pdf",
-  height = 4, width = 2
-)
+if (save_plots) {
+  ggsave(
+    p,
+    filename = "../plots/paper_figs/both_ppt_training_asmptote.pdf", device = "pdf",
+    height = 4, width = 2
+  )
+}
 
 p
 ```
