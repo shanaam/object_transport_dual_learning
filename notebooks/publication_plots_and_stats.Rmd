@@ -139,6 +139,13 @@ both_ppt_training <- fread("../data/misc/both_ppt_training.csv")
 #     asymptote = Reach::exponentialFit(unsigned_angle)[2]
 #   )
 # 
+# both_ppt_training <- both_ppt_training %>%
+#   group_by(ppid, exp) %>%
+#   summarise(
+#     ppt_learning_rate = first(learning_rate),
+#     ppt_asymptote = first(asymptote)
+#   )
+# 
 # # save the above as a csv
 # fwrite(both_ppt_training, "../data/misc/both_ppt_training.csv")
 ```
@@ -164,7 +171,7 @@ p <- data %>%
   theme(legend.position = "none") +
   labs(
     x = "Trial Number",
-    y = "Angular Error (°)"
+    y = "Hand Angle (°)"
   )
 
 # add horizontal lines
@@ -263,7 +270,7 @@ p <- data_trial_set %>%
   theme_classic() +
   theme(legend.position = "none") +
   labs(
-    x = "Trial Number",
+    x = NULL,
     y = NULL
   )
 
@@ -313,7 +320,7 @@ p <- p +
 p <- p +
   scale_x_discrete(
     labels = c(
-      "Init", "Fin"
+      "Init\nT", "Fin\nT"
     )
   )
 
@@ -390,7 +397,7 @@ p <- data_obj_hand_factor %>%
   theme(legend.position = "none") +
   labs(
     x = NULL,
-    y = "Angular Error (°)"
+    y = "Hand Angle (°)"
   )
 
 # add horizontal lines
@@ -407,7 +414,7 @@ p <- p +
 # add axis ticks
 p <- p +
   scale_y_continuous(
-    # limits = c(-15, 40),
+    limits = c(-15, 40),
     breaks = c(0, 15, 30),
     labels = c(0, 15, 30)
   )
@@ -519,7 +526,7 @@ p <- data %>%
   theme(legend.position = "none") +
   labs(
     x = "Trial Number",
-    y = "Angular Error (°)"
+    y = "Hand Angle (°)"
   )
 
 # add horizontal lines
@@ -618,8 +625,8 @@ p <- data_trial_set %>%
   theme_classic() +
   theme(legend.position = "none") +
   labs(
-    x = "Trial Number",
-    y = NULL
+    x = NULL,
+    y = "Hand Angle (°)"
   )
 
 # add horizontal lines
@@ -676,7 +683,7 @@ p <- p +
 if (save_plots) {
   ggsave(
     p,
-    filename = "../plots/paper_figs/sr_30_trial_set.pdf", device = "pdf",
+    filename = "../plots/paper_figs/dr_30_trial_set.pdf", device = "pdf",
     height = 4, width = 2
   )
 }
@@ -733,8 +740,8 @@ p <- data_exp %>%
   theme_classic() +
   theme(legend.position = "none") +
   labs(
-    x = "Shape",
-    y = "Angular Error (°)"
+    x = NULL,
+    y = NULL
   )
 
 # add horizontal lines
@@ -873,8 +880,8 @@ p <- data_exp %>%
   theme_classic() +
   theme(legend.position = "none") +
   labs(
-    x = "Shape",
-    y = "Angular Error (°)"
+    x = NULL,
+    y = NULL
   )
 
 # add horizontal lines
@@ -979,12 +986,6 @@ bayesfactor_inclusion(bf)
 
 # Plot slope and asymptote for both_ppt_training
 ```{r}
-# both_ppt_training <- both_ppt_training_pre %>%
-#   group_by(ppid, exp) %>%
-#   summarise(
-#     ppt_learning_rate = first(learning_rate),
-#     ppt_asymptote = first(asymptote)
-#   )
 
 both_ppt_training$exp <- factor(both_ppt_training$exp)
 
