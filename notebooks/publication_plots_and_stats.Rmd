@@ -41,7 +41,7 @@ intercept <- function(x, y, slope) {
 }
 
 # settings
-save_plots = TRUE
+save_plots = FALSE
 ```
 
 ## Data Import and Summaries
@@ -335,6 +335,49 @@ if (save_plots) {
   
 p
 ```
+### Single Rotation Training Analysis
+
+```{r}
+# summary statistics
+data_ppt %>% 
+  group_by(trial_set) %>% 
+  summarise(
+    mean = mean(mean_trial_set_angle),
+    ci = vector_confint(mean_trial_set_angle),
+    n = n()
+  )
+```
+
+For Bayes Factors, we perform the “JZS” t test described by Rouder, Speckman, Sun, Morey, and Iverson (2009)
+
+```{r}
+# sample size is >30, no need to test for normality
+# Note: one sample t-test on the differences is EQUIVALENT to a paired t-test
+
+# Comparison stats
+# paired t-test
+group1 <- data_ppt %>% 
+  filter(trial_set == "1") %>% 
+  pull(mean_trial_set_angle)
+
+group2 <- data_ppt %>%
+  filter(trial_set == "2") %>% 
+  pull(mean_trial_set_angle)
+
+diffs <- group2 - group1
+
+t.test(diffs)
+
+# Effect size
+cohen.d(group1, group2)
+
+# Bayes Factor
+bf <- ttestBF(x = diffs)
+bf
+```
+The BF for alternative vs null is 219463158191
+
+
 
 ```{r}
 trialset_paired <- 
@@ -692,6 +735,28 @@ p
 ```
 
 ```{r}
+# Comparison stats
+# paired t-test
+group1 <- data_ppt %>% 
+  filter(trial_set == "1") %>% 
+  pull(mean_trial_set_angle)
+
+group2 <- data_ppt %>%
+  filter(trial_set == "2") %>% 
+  pull(mean_trial_set_angle)
+
+diffs <- group2 - group1
+t.test(diffs)
+
+# Effect size
+cohen.d(group1, group2)
+
+# Bayes factor
+ttestBF(x = diffs)
+```
+
+
+```{r}
 trialset_paired <- 
   data_ppt %>%
   dabest(trial_set, mean_trial_set_angle, 
@@ -806,6 +871,28 @@ p
 ```
 
 ```{r}
+# Comparison stats
+# paired t-test
+group1 <- data_ppt %>% 
+  filter(obj_shape_sign == "-1") %>% 
+  pull(ppt_mean_angle)
+
+group2 <- data_ppt %>%
+  filter(obj_shape_sign == "1") %>% 
+  pull(ppt_mean_angle)
+
+diffs <- group2 - group1
+t.test(diffs)
+
+# Effect size
+cohen.d(group1, group2)
+
+# Bayes factor
+ttestBF(x = diffs)
+```
+
+
+```{r}
 trialset_paired <- 
   data_ppt %>%
   dabest(obj_shape_sign, ppt_mean_angle, 
@@ -830,20 +917,6 @@ dr_30_ppt_incl_clamped %>%
   )
 ```
 
-
-```{r}
-temp_ANOVA <- aov(ppt_mean_angle ~ obj_shape_sign, data = dr_30_ppt_incl_clamped)
-
-# show ANOVA + assumptions
-print(summary(temp_ANOVA), digits = 6)
-eta_squared(temp_ANOVA)
-TukeyHSD(temp_ANOVA)
-```
-```{r}
-bf <- anovaBF(ppt_mean_angle ~ obj_shape_sign, data = data.frame(dr_30_ppt_incl_clamped), progress = FALSE)
-print(bf)
-bayesfactor_inclusion(bf)
-```
 
 # D30 exclude strategy clamped plot
 ```{r}
@@ -944,6 +1017,26 @@ if (save_plots) {
 
 p
 ```
+```{r}
+# Comparison stats
+# paired t-test
+group1 <- data_ppt %>% 
+  filter(obj_shape_sign == "-1") %>% 
+  pull(ppt_mean_angle)
+
+group2 <- data_ppt %>%
+  filter(obj_shape_sign == "1") %>% 
+  pull(ppt_mean_angle)
+
+diffs <- group2 - group1
+t.test(diffs)
+
+# Effect size
+cohen.d(group1, group2)
+
+# Bayes factor
+ttestBF(x = diffs)
+```
 
 ```{r}
 trialset_paired <- 
@@ -959,30 +1052,8 @@ p <- trialset_paired %>%
 p
 ```
 
-```{r}
-dr_30_ppt_excl_clamped %>%
-  group_by(obj_shape_sign) %>%
-  summarise(
-    mean = mean(ppt_mean_angle),
-    sd = sd(ppt_mean_angle),
-    ci = vector_confint(ppt_mean_angle),
-    n = n()
-  )
-```
 
-```{r}
-temp_ANOVA <- aov(ppt_mean_angle ~ obj_shape_sign, data = dr_30_ppt_excl_clamped)
 
-# show ANOVA + assumptions
-print(summary(temp_ANOVA), digits = 6)
-eta_squared(temp_ANOVA)
-TukeyHSD(temp_ANOVA)
-```
-```{r}
-bf <- anovaBF(ppt_mean_angle ~ obj_shape_sign, data = data.frame(dr_30_ppt_excl_clamped), progress = FALSE)
-print(bf)
-bayesfactor_inclusion(bf)
-```
 
 # Plot slope and asymptote for both_ppt_training
 ```{r}
