@@ -1236,7 +1236,249 @@ bf <- anovaBF(ppt_asymptote ~ exp, data = data.frame(both_ppt_training), progres
 print(bf)
 bayesfactor_inclusion(bf)
 ```
+
+
+# Kinematic measures
+
+## SR30 
+
+### Total Movement time of STEP 1 over time
+
+S30 Training per-trial plot
+```{r}
+sr_30_exp_step1_time <- sr_30_ppt_training %>%
+  group_by(trial_num) %>% # note: only one where don't need to group_by ppid
+  summarise(
+    mean_step1_time = mean(hand_time_total_move),
+    ci_step1_time = vector_confint(hand_time_total_move)
+  )
+
+data <- sr_30_exp_step1_time
+
+# set up plot
+p <- data %>%
+  ggplot(
+    aes(
+      x = trial_num - 138, y = mean_step1_time
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(
+    x = "Trial Number",
+    y = "Time (s)"
+  )
+
+# add horizontal lines
+p <- p +
+  geom_hline(
+    yintercept = c(0), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "solid"
+  ) +
+  geom_hline(
+    yintercept = c(2, 4, 6), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "dashed"
+  )
+
+# add a grey box behind trial sets
+p <- p +
+  geom_rect(
+    xmin = 1, xmax = 3,
+    ymin = -1, ymax = 7,
+    colour = "#CCCCCC", fill = "#CCCCCC"
+  ) +
+  geom_rect(
+    xmin = 178, xmax = 180,
+    ymin = -1, ymax = 7,
+    colour = "#CCCCCC", fill = "#CCCCCC"
+  )
+
+p <- p +
+  scale_y_continuous(
+    limits = c(-1, 7),
+    breaks = c(0, 2, 4, 6),
+    labels = c(0, 2, 4, 6)
+  ) +
+  scale_x_continuous(
+    limits = c(0, 180),
+    breaks = c(0, 60, 120, 180),
+    labels = c(0, 60, 120, 180)
+  )
+
+# set font size to 11
+p <- p +
+  theme(text = element_text(size = 11))
+
+# add confidence intervals
+p <- p + geom_ribbon(
+  aes(
+    ymin = mean_step1_time - ci_step1_time,
+    ymax = mean_step1_time + ci_step1_time
+  ),
+  fill = "#6aafd2", colour = NA, alpha = 0.3
+)
+
+# add data
+p <- p + geom_line(colour = "#6aafd2")
+
+
+# save
+if (save_plots) {
+  ggsave(
+  p,
+  filename = "../plots/paper_figs/sr_30_step1_time.pdf", device = "pdf",
+  height = 2, width = 4
+  )
+  }
+
+p
+```
+
+```{r}
+sr_30_ppt_trial_sets <- sr_30_ppt_training %>%
+  filter(trial_set < 5) %>%
+  group_by(ppid, trial_set) %>%
+  summarise(
+    mean_trial_set_step1_time = mean(hand_time_total_move)
+  )
+
+sr_30_ppt_trial_sets$trial_set <- as.factor(sr_30_ppt_trial_sets$trial_set)
+
+sr_30_trial_set_values <- sr_30_ppt_trial_sets %>%
+  group_by(trial_set) %>%
+  summarise(
+    trial_set_mean = mean(mean_trial_set_step1_time),
+    trial_set_ci = vector_confint(mean_trial_set_step1_time)
+  )
+
+data_ppt <- sr_30_ppt_trial_sets
+data_trial_set <- sr_30_trial_set_values
+
+# set up plot
+p <- data_trial_set %>%
+  ggplot(
+    aes(
+      x = trial_set, y = trial_set_mean,
+      color = trial_set
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(
+    x = NULL,
+    y = NULL
+  )
+
+# add horizontal lines
+p <- p +
+  geom_hline(
+    yintercept = c(0), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "solid"
+  ) +
+  geom_hline(
+    yintercept = c(2, 4, 6), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "dashed"
+  )
+
+# add axis ticks
+p <- p +
+  scale_y_continuous(
+    limits = c(-1, 7),
+    breaks = c(0, 2, 4, 6),
+    labels = c(0, 2, 4, 6)
+  )
+
+# set font size to 11
+p <- p +
+  theme(text = element_text(size = 11))
+
+# add data points
+p <- p +
+  geom_beeswarm(
+    data = data_ppt,
+    aes(y = mean_trial_set_step1_time),
+    alpha = 0.1,
+    size = 1
+  ) +
+  geom_linerange(aes(
+    ymin = trial_set_mean - trial_set_ci,
+    ymax = trial_set_mean + trial_set_ci
+  ), alpha = 0.5, lwd = 2)
+
+p <- p +
+  scale_color_manual(
+    values = c(
+      "#f07c04", "#a30f15"
+    )
+  )
+
+p <- p +
+  scale_x_discrete(
+    labels = c(
+      "Init\nT", "Fin\nT"
+    )
+  )
+
+# save
+if (save_plots) {
+  ggsave(
+    p,
+    filename = "../plots/paper_figs/sr_30_step1_time_trial_set.pdf", device = "pdf",
+    height = 4, width = 2
+  )
+}
+  
+p
+```
+
+### Step 1 time statistics
+```{r}
+# summary statistics
+data_ppt %>% 
+  group_by(trial_set) %>% 
+  summarise(
+    mean = mean(mean_trial_set_step1_time),
+    ci = vector_confint(mean_trial_set_step1_time),
+    n = n()
+  )
+```
+
+For Bayes Factors, we perform the “JZS” t test described by Rouder, Speckman, Sun, Morey, and Iverson (2009)
+
+```{r}
+# sample size is >30, no need to test for normality
+# Note: one sample t-test on the differences is EQUIVALENT to a paired t-test
+
+# Comparison stats
+# paired t-test
+group1 <- data_ppt %>% 
+  filter(trial_set == "1") %>% 
+  pull(mean_trial_set_step1_time)
+
+group2 <- data_ppt %>%
+  filter(trial_set == "2") %>% 
+  pull(mean_trial_set_step1_time)
+
+diffs <- group2 - group1
+
+t.test(diffs)
+
+# Effect size
+cohen.d(group1, group2)
+
+# Bayes Factor
+bf <- ttestBF(x = diffs)
+bf
+```
+```{r}
+1/bf
+```
+Moderate evidence for the null hypothesis
+
+
+
+
+
 ```{r}
 # empty
 ```
-
