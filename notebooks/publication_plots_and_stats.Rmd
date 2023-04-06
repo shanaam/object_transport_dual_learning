@@ -1476,7 +1476,96 @@ bf
 Moderate evidence for the null hypothesis
 
 
+### Reaction Time of step 2 over time
 
+```{r}
+sr_30_exp_step2_rt <- sr_30_ppt_training %>%
+  group_by(trial_num) %>% # note: only one where don't need to group_by ppid
+  summarise(
+    mean_step2_rt = mean(obj_time_start_move),
+    ci_step2_rt = vector_confint(obj_time_start_move)
+  )
+
+data <- sr_30_exp_step2_rt
+
+# set up plot
+p <- data %>%
+  ggplot(
+    aes(
+      x = trial_num - 138, y = mean_step2_rt
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(
+    x = "Trial Number",
+    y = "Time (s)"
+  )
+
+# add horizontal lines
+p <- p +
+  geom_hline(
+    yintercept = c(0), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "solid"
+  ) +
+  geom_hline(
+    yintercept = c(.2, .4, .6), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "dashed"
+  )
+
+# add a grey box behind trial sets
+p <- p +
+  geom_rect(
+    xmin = 1, xmax = 3,
+    ymin = -0.05, ymax = .6,
+    colour = "#CCCCCC", fill = "#CCCCCC"
+  ) +
+  geom_rect(
+    xmin = 178, xmax = 180,
+    ymin = -0.05, ymax = .6,
+    colour = "#CCCCCC", fill = "#CCCCCC"
+    )
+
+p <- p +
+  scale_y_continuous(
+    limits = c(-0.05, .6),
+    breaks = c(0, .2, .4, .6),
+    labels = c(0, 0.2, 0.4, 0.6)
+  ) +
+  scale_x_continuous(
+    limits = c(0, 180),
+    breaks = c(0, 60, 120, 180),
+    labels = c(0, 60, 120, 180)
+  )
+
+# set font size to 11
+p <- p +
+  theme(text = element_text(size = 11))
+
+# add confidence intervals
+p <- p + geom_ribbon(
+  aes(
+    ymin = mean_step2_rt - ci_step2_rt,
+    ymax = mean_step2_rt + ci_step2_rt
+  ),
+  fill = "#6aafd2", colour = NA, alpha = 0.3
+)
+
+# add data
+p <- p + geom_line(colour = "#6aafd2")
+
+
+# save
+if (save_plots) {
+  ggsave(
+  p,
+  filename = "../plots/paper_figs/sr_30_step2_rt.pdf", device = "pdf",
+  height = 2, width = 4
+  )
+  }
+
+p
+```
 
 
 ```{r}
