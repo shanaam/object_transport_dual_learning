@@ -41,7 +41,7 @@ intercept <- function(x, y, slope) {
 }
 
 # settings
-save_plots = FALSE
+save_plots = TRUE
 ```
 
 ## Data Import and Summaries
@@ -54,8 +54,12 @@ all_data <- fread(data_path)
 ## Setup ##
 palette <- dict(
   list(
-    "cube" = "#6aafd2",
-    "sphere" = "#f07c04"
+    "s30" = "#a30f15",
+    "d30" = "#07509b",
+    "s30-a" = "#fb6949",
+    "d30-a" = "#6aafd2",
+    "a-1" = "#4f1b31",
+    "a-2" = "#d6819b"
   )
 )
 # make any and all summary dfs here
@@ -84,7 +88,8 @@ by_trial_df <- all_data %>%
 ## Isolate experiments and summarize ##
 sr_30_all <- all_data %>%
   filter(exp == "sr_30") %>%
-  mutate(unsigned_angle = obj_angle_3cm_move * obj_shape_sign * -1)
+  mutate(unsigned_obj_angle = obj_angle_3cm_move * obj_shape_sign * -1) %>%
+  mutate(unsigned_hand_angle = hand_angle_3cm_move * obj_shape_sign * -1)
 
 sr_30_ppt_training <- sr_30_all %>%
   filter(block_num == 16) %>%
@@ -109,7 +114,8 @@ sr_30_clamped <- sr_30_all %>%
 ### DR 30 ###
 dr_30_all <- all_data %>%
   filter(exp == "dr_30") %>%
-  mutate(unsigned_angle = obj_angle_3cm_move * obj_shape_sign * -1)
+  mutate(unsigned_obj_angle = obj_angle_3cm_move * obj_shape_sign * -1) %>%
+  mutate(unsigned_hand_angle = hand_angle_3cm_move * obj_shape_sign * -1)
 
 dr_30_ppt_training <- dr_30_all %>%
   filter(block_num == 7) %>%
@@ -135,8 +141,8 @@ both_ppt_training <- fread("../data/misc/both_ppt_training.csv")
 # both_ppt_training <- both_ppt_training %>%
 #   group_by(ppid) %>%
 #   mutate(
-#     learning_rate = Reach::exponentialFit(unsigned_angle)[1],
-#     asymptote = Reach::exponentialFit(unsigned_angle)[2]
+#     learning_rate = Reach::exponentialFit(unsigned_obj_angle)[1],
+#     asymptote = Reach::exponentialFit(unsigned_obj_angle)[2]
 #   )
 # 
 # both_ppt_training <- both_ppt_training %>%
@@ -154,8 +160,10 @@ both_ppt_training <- fread("../data/misc/both_ppt_training.csv")
 sr_30_exp_training <- sr_30_ppt_training %>%
   group_by(trial_num) %>% # note: only one where don't need to group_by ppid
   summarise(
-    mean_unsigned_angle = mean(unsigned_angle),
-    ci_unsigned_angle = vector_confint(unsigned_angle)
+    mean_unsigned_obj_angle = mean(unsigned_obj_angle),
+    ci_unsigned_obj_angle = vector_confint(unsigned_obj_angle),
+    mean_unsigned_hand_angle = mean(unsigned_hand_angle),
+    ci_unsigned_hand_angle = vector_confint(unsigned_hand_angle)
   )
 
 data <- sr_30_exp_training
@@ -164,7 +172,7 @@ data <- sr_30_exp_training
 p <- data %>%
   ggplot(
     aes(
-      x = trial_num - 138, y = mean_unsigned_angle
+      x = trial_num - 138, y = mean_unsigned_obj_angle
     )
   ) +
   theme_classic() +
@@ -217,14 +225,22 @@ p <- p +
 # add confidence intervals
 p <- p + geom_ribbon(
   aes(
-    ymin = mean_unsigned_angle - ci_unsigned_angle,
-    ymax = mean_unsigned_angle + ci_unsigned_angle
+    ymin = mean_unsigned_obj_angle - ci_unsigned_obj_angle,
+    ymax = mean_unsigned_obj_angle + ci_unsigned_obj_angle
   ),
-  fill = "#6aafd2", colour = NA, alpha = 0.3
+  fill = palette$get("s30"), colour = NA, alpha = 0.3
+) + geom_ribbon(
+  aes(
+    y = mean_unsigned_hand_angle,
+    ymin = mean_unsigned_hand_angle - ci_unsigned_hand_angle,
+    ymax = mean_unsigned_hand_angle + ci_unsigned_hand_angle
+  ),
+  fill = "#999999", colour = NA, alpha = 0.3
 )
 
 # add data
-p <- p + geom_line(colour = "#6aafd2")
+p <- p + geom_line(colour = palette$get("s30")) +
+  geom_line(aes(y = mean_unsigned_hand_angle,), colour = "#999999")
 
 
 # save
@@ -244,7 +260,7 @@ sr_30_ppt_trial_sets <- sr_30_ppt_training %>%
   filter(trial_set < 5) %>%
   group_by(ppid, trial_set) %>%
   summarise(
-    mean_trial_set_angle = mean(unsigned_angle)
+    mean_trial_set_angle = mean(unsigned_obj_angle)
   )
 
 sr_30_ppt_trial_sets$trial_set <- as.factor(sr_30_ppt_trial_sets$trial_set)
@@ -313,7 +329,7 @@ p <- p +
 p <- p +
   scale_color_manual(
     values = c(
-      "#f07c04", "#a30f15"
+      palette$get("s30-a"), palette$get("s30")
     )
   )
 
@@ -399,13 +415,13 @@ p
 sr_30_ppt_clamped <- sr_30_clamped %>%
   group_by(ppid, trained_obj_hand_factor, trained_obj_factor, trained_hand_factor) %>%
   summarise(
-    ppt_mean_unsigned_angle = mean(unsigned_angle),
-    ci_unsigned_angle = vector_confint(unsigned_angle)
+    ppt_mean_unsigned_obj_angle = mean(unsigned_obj_angle),
+    ci_unsigned_obj_angle = vector_confint(unsigned_obj_angle)
   ) %>%
   mutate(fixed_angle = case_when(
     (trained_obj_hand_factor == "untrained_obj_trained_hand") |
-      (trained_obj_hand_factor == "untrained_obj_untrained_hand") ~ ppt_mean_unsigned_angle * -1,
-    TRUE ~ ppt_mean_unsigned_angle
+      (trained_obj_hand_factor == "untrained_obj_untrained_hand") ~ ppt_mean_unsigned_obj_angle * -1,
+    TRUE ~ ppt_mean_unsigned_obj_angle
   ))
 
 sr_30_ppt_clamped$trained_obj_hand_factor <- factor(sr_30_ppt_clamped$trained_obj_hand_factor)
@@ -415,8 +431,8 @@ sr_30_ppt_clamped$trained_hand_factor <- factor(sr_30_ppt_clamped$trained_hand_f
 sr_30_obj_hand_clamped <- sr_30_ppt_clamped %>%
   group_by(trained_obj_hand_factor) %>%
   summarise(
-    mean_unsigned_angle = mean(fixed_angle),
-    ci_unsigned_angle = vector_confint(fixed_angle)
+    mean_unsigned_obj_angle = mean(fixed_angle),
+    ci_unsigned_obj_angle = vector_confint(fixed_angle)
   )
 data_ppt <- sr_30_ppt_clamped
 data_obj_hand_factor <- sr_30_obj_hand_clamped
@@ -432,7 +448,7 @@ p <- data_obj_hand_factor %>%
             "trained_obj_untrained_hand", "untrained_obj_untrained_hand"
           )
       ),
-      y = mean_unsigned_angle,
+      y = mean_unsigned_obj_angle,
       color = trained_obj_hand_factor
     )
   ) +
@@ -484,16 +500,18 @@ p <- p +
     size = 1
   ) +
   geom_linerange(aes(
-    ymin = mean_unsigned_angle - ci_unsigned_angle,
-    ymax = mean_unsigned_angle + ci_unsigned_angle
+    ymin = mean_unsigned_obj_angle - ci_unsigned_obj_angle,
+    ymax = mean_unsigned_obj_angle + ci_unsigned_obj_angle
   ), alpha = 0.5, lwd = 2) +
   geom_point()
 
 p <- p +
   scale_color_manual(
     values = c(
-      "#f07c04", "#a30f15",
-      "#f07c04", "#a30f15"
+      palette$get("s30"), # trained shape trained hand
+      palette$get("a-2"),
+      palette$get("s30-a"), 
+      palette$get("a-1")
     )
   )
 
@@ -551,8 +569,10 @@ bayesfactor_inclusion(bf)
 dr_30_exp_training <- dr_30_ppt_training %>%
   group_by(trial_num_in_block) %>%
   summarise(
-    mean_unsigned_angle = mean(unsigned_angle),
-    ci_unsigned_angle = vector_confint(unsigned_angle)
+    mean_unsigned_obj_angle = mean(unsigned_obj_angle),
+    ci_unsigned_obj_angle = vector_confint(unsigned_obj_angle),
+    mean_unsigned_hand_angle = mean(unsigned_hand_angle),
+    ci_unsigned_hand_angle = vector_confint(unsigned_hand_angle)
   )
 
 data <- dr_30_exp_training
@@ -562,7 +582,7 @@ p <- data %>%
   ggplot(
     aes(
       x = trial_num_in_block,
-      y = mean_unsigned_angle
+      y = mean_unsigned_obj_angle
     )
   ) +
   theme_classic() +
@@ -615,14 +635,23 @@ p <- p +
 # add confidence intervals
 p <- p + geom_ribbon(
   aes(
-    ymin = mean_unsigned_angle - ci_unsigned_angle,
-    ymax = mean_unsigned_angle + ci_unsigned_angle
+    ymin = mean_unsigned_obj_angle - ci_unsigned_obj_angle,
+    ymax = mean_unsigned_obj_angle + ci_unsigned_obj_angle
   ),
-  fill = "#6aafd2", colour = NA, alpha = 0.3
+  fill = palette$get("d30"), colour = NA, alpha = 0.3
+) + 
+  geom_ribbon(
+  aes(
+    y = mean_unsigned_hand_angle,
+    ymin = mean_unsigned_hand_angle - ci_unsigned_hand_angle,
+    ymax = mean_unsigned_hand_angle + ci_unsigned_hand_angle
+  ),
+  fill = "#999999", colour = NA, alpha = 0.3
 )
 
 # add data
-p <- p + geom_line(colour = "#6aafd2")
+p <- p + geom_line(colour = palette$get("d30")) +
+  geom_line(aes(y = mean_unsigned_hand_angle,), colour = "#999999")
 
 # save
 if (save_plots) {
@@ -642,7 +671,7 @@ dr_30_ppt_trial_sets <- dr_30_ppt_training %>%
   filter(trial_set < 5) %>%
   group_by(ppid, trial_set) %>%
   summarise(
-    mean_trial_set_angle = mean(unsigned_angle)
+    mean_trial_set_angle = mean(unsigned_obj_angle)
   )
 
 dr_30_ppt_trial_sets$trial_set <- as.factor(dr_30_ppt_trial_sets$trial_set)
@@ -711,7 +740,7 @@ p <- p +
 p <- p +
   scale_color_manual(
     values = c(
-      "#f07c04", "#a30f15"
+      palette$get("d30-a"), palette$get("d30")
     )
   )
 
@@ -855,7 +884,7 @@ p <- p +
 
 p <- p +
   scale_color_manual(
-    values = c("#f07c04", "#a30f15")
+    values = c(palette$get("a-1"), palette$get("a-2"))
   )
 
 # save
@@ -1003,7 +1032,7 @@ p <- p +
 
 p <- p +
   scale_color_manual(
-    values = c("#f07c04", "#a30f15")
+    values = c(palette$get("a-1"), palette$get("a-2"))
   )
 
 # save
@@ -1273,8 +1302,8 @@ p <- data %>%
   theme_classic() +
   theme(legend.position = "none") +
   labs(
-    x = "Trial Number",
-    y = "Time (s)"
+    x = NULL,
+    y = "Step 1 Time (s)"
   )
 
 # add horizontal lines
@@ -1305,7 +1334,7 @@ p <- p +
   scale_y_continuous(
     limits = c(-1, 7),
     breaks = c(0, 2, 4, 6),
-    labels = c(0, 2, 4, 6)
+    labels = c(0, 2, 4, 0.6)
   ) +
   scale_x_continuous(
     limits = c(0, 180),
@@ -1329,8 +1358,20 @@ p <- p + geom_ribbon(
 )
 
 # add data
-p <- p + geom_line(
-  # colour = "#6aafd2"
+p <- p + geom_line()
+
+p <- p +
+  scale_color_manual(
+    values = c(
+      palette$get("d30"),
+      palette$get("s30")
+    )
+  ) +
+  scale_fill_manual(
+    values = c(
+      palette$get("d30"),
+      palette$get("s30")
+    )
   )
 
 
@@ -1339,7 +1380,7 @@ if (save_plots) {
   ggsave(
   p,
   filename = "../plots/paper_figs/sr_30_step1_time.pdf", device = "pdf",
-  height = 2, width = 5
+  height = 2, width = 4
   )
   }
 
@@ -1356,6 +1397,8 @@ sr_30_ppt_trial_sets <- both_ppt_training %>%
 
 sr_30_ppt_trial_sets$trial_set <- as.factor(sr_30_ppt_trial_sets$trial_set)
 sr_30_ppt_trial_sets$exp <- as.factor(sr_30_ppt_trial_sets$exp)
+sr_30_ppt_trial_sets$exp_trial_set <- factor(sr_30_ppt_trial_sets$exp_trial_set, 
+                                             levels = c("sr_30_1", "sr_30_2", "dr_30_1", "dr_30_2"))
 
 sr_30_trial_set_values <- sr_30_ppt_trial_sets %>%
   group_by(exp_trial_set, exp, trial_set) %>%
@@ -1372,11 +1415,11 @@ p <- data_trial_set %>%
   ggplot(
     aes(
       x = exp_trial_set, y = trial_set_mean,
-      color = exp
+      color = exp_trial_set
     )
   ) +
   theme_classic() +
-  # theme(legend.position = "none") +
+  theme(legend.position = "none") +
   labs(
     x = NULL,
     y = NULL
@@ -1398,7 +1441,7 @@ p <- p +
   scale_y_continuous(
     limits = c(-1, 7),
     breaks = c(0, 2, 4, 6),
-    labels = c(0, 2, 4, 6)
+    labels = c(0, 2, 4, 0.6)
   )
 
 # set font size to 11
@@ -1422,23 +1465,27 @@ p <- p +
 p <- p +
   scale_color_manual(
     values = c(
-      "#f07c04", "#a30f15"
+      palette$get("s30-a"),
+      palette$get("s30"),
+      palette$get("d30-a"),
+      palette$get("d30")
     )
   )
 
-p <- p 
-  # scale_x_discrete(
-  #   labels = c(
-  #     "Init\nT", "Fin\nT"
-  #   )
-  # )
+p <- p +
+  scale_x_discrete(
+    labels = c(
+      "Init", "Fin",
+      "Init", "Fin"
+    )
+  )
 
 # save
 if (save_plots) {
   ggsave(
     p,
     filename = "../plots/paper_figs/sr_30_step1_time_trial_set.pdf", device = "pdf",
-    height = 2, width = 1
+    height = 2, width = 2
   )
 }
   
@@ -1493,10 +1540,10 @@ p <- data %>%
     )
   ) +
   theme_classic() +
-  # theme(legend.position = "none") +
+  theme(legend.position = "none") +
   labs(
-    x = "Trial Number",
-    y = "Time (s)"
+    x = NULL,
+    y = "Step 2 RT (s)"
   )
 
 # add horizontal lines
@@ -1555,13 +1602,27 @@ p <- p + geom_line(
   # colour = "#6aafd2"
   )
 
+p <- p +
+  scale_color_manual(
+    values = c(
+      palette$get("d30"),
+      palette$get("s30")
+    )
+  ) +
+  scale_fill_manual(
+    values = c(
+      palette$get("d30"),
+      palette$get("s30")
+    )
+  )
+
 
 # save
 if (save_plots) {
   ggsave(
   p,
   filename = "../plots/paper_figs/sr_30_step2_rt.pdf", device = "pdf",
-  height = 2, width = 5
+  height = 2, width = 4
   )
   }
 
@@ -1578,6 +1639,8 @@ sr_30_ppt_trial_sets <- both_ppt_training %>%
 
 sr_30_ppt_trial_sets$trial_set <- as.factor(sr_30_ppt_trial_sets$trial_set)
 sr_30_ppt_trial_sets$exp <- as.factor(sr_30_ppt_trial_sets$exp)
+sr_30_ppt_trial_sets$exp_trial_set <- factor(sr_30_ppt_trial_sets$exp_trial_set, 
+                                             levels = c("sr_30_1", "sr_30_2", "dr_30_1", "dr_30_2"))
 
 sr_30_trial_set_values <- sr_30_ppt_trial_sets %>%
   group_by(exp_trial_set, exp, trial_set) %>%
@@ -1594,7 +1657,7 @@ p <- data_trial_set %>%
   ggplot(
     aes(
       x = exp_trial_set, y = trial_set_mean,
-      color = exp
+      color = exp_trial_set
     )
   ) +
   theme_classic() +
@@ -1644,23 +1707,27 @@ p <- p +
 p <- p +
   scale_color_manual(
     values = c(
-      "#f07c04", "#a30f15"
+      palette$get("s30-a"),
+      palette$get("s30"),
+      palette$get("d30-a"),
+      palette$get("d30")
     )
   )
 
-# p <- p +
-#   scale_x_discrete(
-#     labels = c(
-#       "Init\nT", "Fin\nT"
-#     )
-#   )
+p <- p +
+  scale_x_discrete(
+    labels = c(
+      "Init", "Fin",
+      "Init", "Fin"
+    )
+  )
 
 # save
 if (save_plots) {
   ggsave(
     p,
     filename = "../plots/paper_figs/sr_30_step2_rt_trial_set.pdf", device = "pdf",
-    height = 2, width = 1
+    height = 2, width = 2
   )
 }
   
@@ -1712,10 +1779,10 @@ p <- data %>%
     )
   ) +
   theme_classic() +
-  # theme(legend.position = "none") +
+  theme(legend.position = "none") +
   labs(
-    x = "Trial Number",
-    y = "Time (s)"
+    x = NULL,
+    y = "Step 2 MT (s)"
   )
 
 # add horizontal lines
@@ -1775,13 +1842,28 @@ p <- p + geom_line(
   # colour = "#6aafd2"
   )
 
+p <- p +
+  scale_color_manual(
+    values = c(
+      palette$get("d30"),
+      palette$get("s30")
+    )
+  ) +
+  scale_fill_manual(
+    values = c(
+      palette$get("d30"),
+      palette$get("s30")
+    )
+  )
+
+
 
 # save
 if (save_plots) {
   ggsave(
   p,
   filename = "../plots/paper_figs/sr_30_step2_mt.pdf", device = "pdf",
-  height = 2, width = 5
+  height = 2, width = 4
   )
   }
 
@@ -1800,6 +1882,8 @@ sr_30_ppt_trial_sets <- both_ppt_training %>%
 
 sr_30_ppt_trial_sets$trial_set <- as.factor(sr_30_ppt_trial_sets$trial_set)
 sr_30_ppt_trial_sets$exp <- as.factor(sr_30_ppt_trial_sets$exp)
+sr_30_ppt_trial_sets$exp_trial_set <- factor(sr_30_ppt_trial_sets$exp_trial_set, 
+                                             levels = c("sr_30_1", "sr_30_2", "dr_30_1", "dr_30_2"))
 
 sr_30_trial_set_values <- sr_30_ppt_trial_sets %>%
   group_by(exp_trial_set, exp, trial_set) %>%
@@ -1816,11 +1900,11 @@ p <- data_trial_set %>%
   ggplot(
     aes(
       x = exp_trial_set, y = trial_set_mean,
-      color = exp
+      color = exp_trial_set
     )
   ) +
   theme_classic() +
-  # theme(legend.position = "none") +
+  theme(legend.position = "none") +
   labs(
     x = NULL,
     y = NULL
@@ -1866,23 +1950,27 @@ p <- p +
 p <- p +
   scale_color_manual(
     values = c(
-      "#f07c04", "#a30f15"
+      palette$get("s30-a"),
+      palette$get("s30"),
+      palette$get("d30-a"),
+      palette$get("d30")
     )
   )
 
-# p <- p +
-#   scale_x_discrete(
-#     labels = c(
-#       "Init\nT", "Fin\nT"
-#     )
-#   )
+p <- p +
+  scale_x_discrete(
+    labels = c(
+      "Init", "Fin",
+      "Init", "Fin"
+    )
+  )
 
 # save
 if (save_plots) {
   ggsave(
     p,
     filename = "../plots/paper_figs/sr_30_step2_mt_trial_set.pdf", device = "pdf",
-    height = 2, width = 1
+    height = 2, width = 2
   )
 }
   
