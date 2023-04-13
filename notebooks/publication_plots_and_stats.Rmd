@@ -62,28 +62,6 @@ palette <- dict(
     "a-2" = "#d6819b"
   )
 )
-# make any and all summary dfs here
-by_trial_df <- all_data %>%
-  group_by(exp, type, trial_num) %>%
-  summarise(
-    mean_obj_angle_3cm_move = mean(obj_angle_3cm_move),
-    ci_obj_angle_3cm_move = vector_confint(obj_angle_3cm_move),
-    mean_obj_time_start_move = mean(obj_time_start_move),
-    ci_obj_time_start_move = vector_confint(obj_time_start_move),
-    mean_obj_time_reach = mean(obj_time_reach),
-    ci_obj_time_reach = vector_confint(obj_time_reach),
-    mean_obj_time_total_move = mean(obj_time_total_move),
-    ci_obj_time_total_move = vector_confint(obj_time_total_move),
-    mean_hand_angle_3cm_move = mean(hand_angle_3cm_move),
-    ci_hand_angle_3cm_move = vector_confint(hand_angle_3cm_move),
-    mean_hand_time_start_move = mean(hand_time_start_move),
-    ci_hand_time_start_move = vector_confint(hand_time_start_move),
-    mean_hand_time_reach = mean(hand_time_reach),
-    ci_hand_time_reach = vector_confint(hand_time_reach),
-    mean_hand_time_total_move = mean(hand_time_total_move),
-    ci_hand_time_total_move = vector_confint(hand_time_total_move),
-  )
-
 
 ## Isolate experiments and summarize ##
 sr_30_all <- all_data %>%
@@ -197,18 +175,18 @@ p <- p +
 p <- p +
   geom_rect(
     xmin = 1, xmax = 3,
-    ymin = -5, ymax = 35,
+    ymin = -10, ymax = 35,
     colour = "#CCCCCC", fill = "#CCCCCC"
   ) +
   geom_rect(
     xmin = 178, xmax = 180,
-    ymin = -5, ymax = 35,
+    ymin = -10, ymax = 35,
     colour = "#CCCCCC", fill = "#CCCCCC"
   )
 
 p <- p +
   scale_y_continuous(
-    limits = c(-5, 35),
+    limits = c(-10, 35),
     breaks = c(0, 15, 30),
     labels = c(0, 15, 30)
   ) +
@@ -235,12 +213,12 @@ p <- p + geom_ribbon(
     ymin = mean_unsigned_hand_angle - ci_unsigned_hand_angle,
     ymax = mean_unsigned_hand_angle + ci_unsigned_hand_angle
   ),
-  fill = "#999999", colour = NA, alpha = 0.3
+  fill = "#555555", colour = NA, alpha = 0.3
 )
 
 # add data
 p <- p + geom_line(colour = palette$get("s30")) +
-  geom_line(aes(y = mean_unsigned_hand_angle,), colour = "#999999")
+  geom_line(aes(y = mean_unsigned_hand_angle,), colour = "#555555")
 
 
 # save
@@ -254,6 +232,106 @@ if (save_plots) {
 
 p
 ```
+
+# S30 Training trial set plot - Step 1
+```{r}
+sr_30_ppt_trial_sets <- sr_30_ppt_training %>%
+  filter(trial_set < 5) %>%
+  group_by(ppid, trial_set) %>%
+  summarise(
+    mean_trial_set_angle = mean(unsigned_hand_angle)
+  )
+
+sr_30_ppt_trial_sets$trial_set <- as.factor(sr_30_ppt_trial_sets$trial_set)
+
+sr_30_trial_set_devs <- sr_30_ppt_trial_sets %>%
+  group_by(trial_set) %>%
+  summarise(
+    trial_set_mean = mean(mean_trial_set_angle),
+    trial_set_ci = vector_confint(mean_trial_set_angle)
+  )
+
+data_ppt <- sr_30_ppt_trial_sets
+data_trial_set <- sr_30_trial_set_devs
+
+# set up plot
+p <- data_trial_set %>%
+  ggplot(
+    aes(
+      x = trial_set, y = trial_set_mean,
+      color = trial_set
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(
+    x = NULL,
+    y = "Hand Angle (°)"
+  )
+
+# add horizontal lines
+p <- p +
+  geom_hline(
+    yintercept = c(0, 30), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "solid"
+  ) +
+  geom_hline(
+    yintercept = c(15), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "dashed"
+  )
+
+# add axis ticks
+p <- p +
+  scale_y_continuous(
+    limits = c(-15, 40),
+    breaks = c(0, 15, 30),
+    labels = c(0, 15, 30)
+  )
+
+# set font size to 11
+p <- p +
+  theme(text = element_text(size = 11))
+
+# add data points
+p <- p +
+  geom_beeswarm(
+    data = data_ppt,
+    aes(y = mean_trial_set_angle),
+    alpha = 0.1,
+    size = 1
+  ) +
+  geom_linerange(aes(
+    ymin = trial_set_mean - trial_set_ci,
+    ymax = trial_set_mean + trial_set_ci
+  ), alpha = 0.5, lwd = 2) +
+  geom_point()
+
+p <- p +
+  scale_color_manual(
+    values = c(
+      "#555555", "#555555"
+    )
+  )
+
+p <- p +
+  scale_x_discrete(
+    labels = c(
+      "Init\nT", "Fin\nT"
+    )
+  )
+
+# save
+if (save_plots) {
+  ggsave(
+    p,
+    filename = "../plots/paper_figs/sr_30_step_1_trial_set.pdf", device = "pdf",
+    height = 4, width = 1.5
+  )
+}
+  
+p
+```
+
 # S30 Training trial set plot
 ```{r}
 sr_30_ppt_trial_sets <- sr_30_ppt_training %>%
@@ -324,12 +402,13 @@ p <- p +
   geom_linerange(aes(
     ymin = trial_set_mean - trial_set_ci,
     ymax = trial_set_mean + trial_set_ci
-  ), alpha = 0.5, lwd = 2)
+  ), alpha = 0.5, lwd = 2) +
+  geom_point()
 
 p <- p +
   scale_color_manual(
     values = c(
-      palette$get("s30-a"), palette$get("s30")
+      palette$get("s30"), palette$get("s30")
     )
   )
 
@@ -345,7 +424,7 @@ if (save_plots) {
   ggsave(
     p,
     filename = "../plots/paper_figs/sr_30_trial_set.pdf", device = "pdf",
-    height = 4, width = 2
+    height = 4, width = 1.5
   )
 }
   
@@ -409,6 +488,46 @@ p <- trialset_paired %>%
 p
 ```
 
+### Single Rotation Training Analysis
+
+```{r}
+# summary statistics
+data_ppt %>% 
+  group_by(trial_set) %>% 
+  summarise(
+    mean = mean(mean_trial_set_angle),
+    ci = vector_confint(mean_trial_set_angle),
+    n = n()
+  )
+```
+
+For Bayes Factors, we perform the “JZS” t test described by Rouder, Speckman, Sun, Morey, and Iverson (2009)
+
+```{r}
+# sample size is >30, no need to test for normality
+# Note: one sample t-test on the differences is EQUIVALENT to a paired t-test
+
+# Comparison stats
+# paired t-test
+group1 <- data_ppt %>% 
+  filter(trial_set == "1") %>% 
+  pull(mean_trial_set_angle)
+
+group2 <- data_ppt %>%
+  filter(trial_set == "2") %>% 
+  pull(mean_trial_set_angle)
+
+diffs <- group2 - group1
+
+t.test(diffs)
+
+# Effect size
+cohen.d(group1, group2)
+
+# Bayes Factor
+bf <- ttestBF(x = diffs)
+bf
+```
 
 # S30 Clamped
 ```{r}
@@ -427,6 +546,7 @@ sr_30_ppt_clamped <- sr_30_clamped %>%
 sr_30_ppt_clamped$trained_obj_hand_factor <- factor(sr_30_ppt_clamped$trained_obj_hand_factor)
 sr_30_ppt_clamped$trained_obj_factor <- factor(sr_30_ppt_clamped$trained_obj_factor)
 sr_30_ppt_clamped$trained_hand_factor <- factor(sr_30_ppt_clamped$trained_hand_factor)
+sr_30_ppt_clamped$ppid <- factor(sr_30_ppt_clamped$ppid)
 
 sr_30_obj_hand_clamped <- sr_30_ppt_clamped %>%
   group_by(trained_obj_hand_factor) %>%
@@ -434,6 +554,7 @@ sr_30_obj_hand_clamped <- sr_30_ppt_clamped %>%
     mean_unsigned_obj_angle = mean(fixed_angle),
     ci_unsigned_obj_angle = vector_confint(fixed_angle)
   )
+
 data_ppt <- sr_30_ppt_clamped
 data_obj_hand_factor <- sr_30_obj_hand_clamped
 
@@ -456,7 +577,7 @@ p <- data_obj_hand_factor %>%
   theme(legend.position = "none") +
   labs(
     x = NULL,
-    y = "Hand Angle (°)"
+    y = NULL
   )
 
 # add horizontal lines
@@ -510,8 +631,8 @@ p <- p +
     values = c(
       palette$get("s30"), # trained shape trained hand
       palette$get("a-2"),
-      palette$get("s30-a"), 
-      palette$get("a-1")
+      palette$get("a-1"), 
+      palette$get("s30-a")
     )
   )
 
@@ -532,14 +653,14 @@ if (save_plots) {
   ggsave(
     p,
     filename = "../plots/paper_figs/sr_30_clamped.pdf", device = "pdf",
-    height = 4, width = 4
+    height = 4, width = 3
   )
 }
 
 p
 ```
 ```{r}
-sr_30_ppt_clamped %>%
+data_ppt %>%
   group_by(trained_obj_hand_factor) %>%
   summarise(
     mean = mean(fixed_angle),
@@ -550,18 +671,120 @@ sr_30_ppt_clamped %>%
 ```
 
 ```{r}
-temp_ANOVA <- aov(fixed_angle ~ trained_obj_factor * trained_hand_factor, data = sr_30_ppt_clamped)
+# temp_ANOVA <- aov(fixed_angle ~ trained_obj_factor * trained_hand_factor, data = sr_30_ppt_clamped)
+# 
+# # show ANOVA + assumptions
+# print(summary(temp_ANOVA), digits = 6)
+# eta_squared(temp_ANOVA)
+# TukeyHSD(temp_ANOVA)
 
-# show ANOVA + assumptions
-print(summary(temp_ANOVA), digits = 6)
-eta_squared(temp_ANOVA)
-TukeyHSD(temp_ANOVA)
+temp_ANOVA <- data_ppt %>%
+  ezANOVA(wid = ppid,
+        dv = fixed_angle, 
+        within = .(trained_obj_factor, trained_hand_factor),
+        detailed = TRUE)
+
+temp_ANOVA
 ```
 ```{r}
-bf <- anovaBF(fixed_angle ~ trained_obj_factor * trained_hand_factor, data = data.frame(sr_30_ppt_clamped), progress = FALSE)
+bf <- anovaBF(fixed_angle ~ trained_obj_factor * trained_hand_factor + ppid, data = data.frame(data_ppt), whichRandom = "ppid", progress = FALSE)
 print(bf)
 bayesfactor_inclusion(bf)
 ```
+## Collapsing across shapes
+```{r}
+sr_30_ppt_clamped <- sr_30_clamped %>%
+  mutate(fixed_angle = case_when(
+    (trained_obj_hand_factor == "untrained_obj_trained_hand") |
+      (trained_obj_hand_factor == "untrained_obj_untrained_hand") ~ unsigned_obj_angle * -1,
+    TRUE ~ unsigned_obj_angle
+  )) %>%
+  group_by(ppid, trained_hand_factor) %>%
+  summarise(
+    fixed_angle_mean = mean(fixed_angle),
+    ci_unsigned_obj_angle = vector_confint(fixed_angle)
+  )
+  
+sr_30_ppt_clamped$trained_hand_factor <- factor(sr_30_ppt_clamped$trained_hand_factor)
+sr_30_ppt_clamped$ppid <- factor(sr_30_ppt_clamped$ppid)
+
+head(sr_30_ppt_clamped)
+```
+```{r}
+sr_30_ppt_clamped %>%
+  group_by(trained_hand_factor) %>%
+  summarise(
+    mean = mean(fixed_angle_mean),
+    sd = sd(fixed_angle_mean),
+    ci = vector_confint(fixed_angle_mean),
+    n = n()
+  )
+```
+
+## Compare trained_hand with last trial set of training
+
+```{r}
+clamped_trained_hand_df <- sr_30_ppt_clamped %>%
+  filter(trained_hand_factor == "trained_hand") %>%
+  select(ppid, fixed_angle_mean)
+
+fin_trial_set_df <- sr_30_ppt_trial_sets %>%
+  filter(trial_set == 2) %>%
+  select(ppid, mean_trial_set_angle)
+
+# merge by ppid
+clamped_trained_hand_df <- merge(clamped_trained_hand_df, fin_trial_set_df, by = "ppid")
+
+# Comparison stats
+# paired t-test
+group1 <- clamped_trained_hand_df %>% 
+  pull(fixed_angle_mean)
+
+group2 <- clamped_trained_hand_df %>%
+  pull(mean_trial_set_angle)
+
+diffs <- group2 - group1
+t.test(diffs)
+
+# Effect size
+cohen.d(group1, group2)
+
+# Bayes factor
+ttestBF(x = diffs)
+
+```
+
+## Compare untrained hand
+
+```{r}
+clamped_trained_hand_df <- sr_30_ppt_clamped %>%
+  filter(trained_hand_factor == "untrained_hand") %>%
+  select(ppid, fixed_angle_mean)
+
+# Comparison stats
+# paired t-test
+group1 <- clamped_trained_hand_df %>% 
+  pull(fixed_angle_mean)
+
+t.test(group1)
+
+# Bayes factor
+ttestBF(x = group1)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # D30 Training per-trial plot
@@ -646,12 +869,12 @@ p <- p + geom_ribbon(
     ymin = mean_unsigned_hand_angle - ci_unsigned_hand_angle,
     ymax = mean_unsigned_hand_angle + ci_unsigned_hand_angle
   ),
-  fill = "#999999", colour = NA, alpha = 0.3
+  fill = "#555555", colour = NA, alpha = 0.3
 )
 
 # add data
 p <- p + geom_line(colour = palette$get("d30")) +
-  geom_line(aes(y = mean_unsigned_hand_angle,), colour = "#999999")
+  geom_line(aes(y = mean_unsigned_hand_angle,), colour = "#555555")
 
 # save
 if (save_plots) {
@@ -665,13 +888,13 @@ if (save_plots) {
 p
 ```
 
-# DR30 Training trial set plot
+# D30 Training trial set plot - Step 1
 ```{r}
 dr_30_ppt_trial_sets <- dr_30_ppt_training %>%
   filter(trial_set < 5) %>%
   group_by(ppid, trial_set) %>%
   summarise(
-    mean_trial_set_angle = mean(unsigned_obj_angle)
+    mean_trial_set_angle = mean(unsigned_hand_angle)
   )
 
 dr_30_ppt_trial_sets$trial_set <- as.factor(dr_30_ppt_trial_sets$trial_set)
@@ -708,16 +931,16 @@ p <- p +
     colour = "#CCCCCC", linetype = "solid"
   ) +
   geom_hline(
-    yintercept = c(15), linewidth = 0.4,
+    yintercept = c(-15, 15), linewidth = 0.4,
     colour = "#CCCCCC", linetype = "dashed"
   )
 
 # add axis ticks
 p <- p +
   scale_y_continuous(
-    limits = c(-15, 40),
-    breaks = c(0, 15, 30),
-    labels = c(0, 15, 30)
+    limits = c(-25, 40),
+    breaks = c(-15, 0, 15, 30),
+    labels = c(-15, 0, 15, 30)
   )
 
 # set font size to 11
@@ -735,12 +958,142 @@ p <- p +
   geom_linerange(aes(
     ymin = trial_set_mean - trial_set_ci,
     ymax = trial_set_mean + trial_set_ci
-  ), alpha = 0.5, lwd = 2)
+  ), alpha = 0.5, lwd = 2) +
+  geom_point()
 
 p <- p +
   scale_color_manual(
     values = c(
-      palette$get("d30-a"), palette$get("d30")
+      "#555555", "#555555"
+    )
+  )
+
+p <- p +
+  scale_x_discrete(
+    labels = c(
+      "Init", "Fin"
+    )
+  )
+
+# save
+if (save_plots) {
+  ggsave(
+    p,
+    filename = "../plots/paper_figs/dr_30_step_1_trial_set.pdf", device = "pdf",
+    height = 4, width = 1.5
+  )
+}
+  
+p
+```
+```{r}
+# summary statistics
+data_ppt %>% 
+  group_by(trial_set) %>% 
+  summarise(
+    mean = mean(mean_trial_set_angle),
+    ci = vector_confint(mean_trial_set_angle),
+    n = n()
+  )
+```
+```{r}
+# Comparison stats
+# paired t-test
+group1 <- data_ppt %>% 
+  filter(trial_set == "1") %>% 
+  pull(mean_trial_set_angle)
+
+group2 <- data_ppt %>%
+  filter(trial_set == "2") %>% 
+  pull(mean_trial_set_angle)
+
+diffs <- group2 - group1
+t.test(diffs)
+
+# Effect size
+cohen.d(group1, group2)
+
+# Bayes factor
+ttestBF(x = diffs)
+```
+
+# DR30 Training trial set plot - Step 2
+```{r}
+dr_30_ppt_trial_sets <- dr_30_ppt_training %>%
+  filter(trial_set < 5) %>%
+  group_by(ppid, trial_set) %>%
+  summarise(
+    mean_trial_set_angle = mean(unsigned_obj_angle)
+  )
+
+dr_30_ppt_trial_sets$trial_set <- as.factor(dr_30_ppt_trial_sets$trial_set)
+
+dr_30_trial_set_devs <- dr_30_ppt_trial_sets %>%
+  group_by(trial_set) %>%
+  summarise(
+    trial_set_mean = mean(mean_trial_set_angle),
+    trial_set_ci = vector_confint(mean_trial_set_angle)
+  )
+
+data_ppt <- dr_30_ppt_trial_sets
+data_trial_set <- dr_30_trial_set_devs
+
+# set up plot
+p <- data_trial_set %>%
+  ggplot(
+    aes(
+      x = trial_set, y = trial_set_mean,
+      color = trial_set
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(
+    x = NULL,
+    y = NULL
+  )
+
+# add horizontal lines
+p <- p +
+  geom_hline(
+    yintercept = c(0, 30), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "solid"
+  ) +
+  geom_hline(
+    yintercept = c(-15, 15), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "dashed"
+  )
+
+# add axis ticks
+p <- p +
+  scale_y_continuous(
+    limits = c(-25, 40),
+    breaks = c(-15, 0, 15, 30),
+    labels = c(-15, 0, 15, 30)
+  )
+
+# set font size to 11
+p <- p +
+  theme(text = element_text(size = 11))
+
+# add data points
+p <- p +
+  geom_beeswarm(
+    data = data_ppt,
+    aes(y = mean_trial_set_angle),
+    alpha = 0.1,
+    size = 1
+  ) +
+  geom_linerange(aes(
+    ymin = trial_set_mean - trial_set_ci,
+    ymax = trial_set_mean + trial_set_ci
+  ), alpha = 0.5, lwd = 2) +
+  geom_point()
+
+p <- p +
+  scale_color_manual(
+    values = c(
+      palette$get("d30"), palette$get("d30")
     )
   )
 
@@ -756,13 +1109,22 @@ if (save_plots) {
   ggsave(
     p,
     filename = "../plots/paper_figs/dr_30_trial_set.pdf", device = "pdf",
-    height = 4, width = 2
+    height = 4, width = 1.5
   )
 }
   
 p
 ```
-
+```{r}
+# summary statistics
+data_ppt %>% 
+  group_by(trial_set) %>% 
+  summarise(
+    mean = mean(mean_trial_set_angle),
+    ci = vector_confint(mean_trial_set_angle),
+    n = n()
+  )
+```
 ```{r}
 # Comparison stats
 # paired t-test
@@ -798,6 +1160,8 @@ p <- trialset_paired %>%
 
 p
 ```
+
+
 
 # D30 include strategy clamped plot
 ```{r}
@@ -835,26 +1199,26 @@ p <- data_exp %>%
   theme(legend.position = "none") +
   labs(
     x = NULL,
-    y = NULL
+    y = "Hand Angle (°)"
   )
 
 # add horizontal lines
 p <- p +
   geom_hline(
-    yintercept = c(0, 30), linewidth = 0.4,
+    yintercept = c(-30, 0, 30), linewidth = 0.4,
     colour = "#CCCCCC", linetype = "solid"
   ) +
   geom_hline(
-    yintercept = c(15), linewidth = 0.4,
+    yintercept = c(-15, 15), linewidth = 0.4,
     colour = "#CCCCCC", linetype = "dashed"
   )
 
 # add axis ticks
 p <- p +
   scale_y_continuous(
-    # limits = c(-15, 40),
-    breaks = c(0, 15, 30),
-    labels = c(0, 15, 30)
+    limits = c(-35, 35),
+    breaks = c(-30, -15, 0, 15, 30),
+    labels = c(-30, -15, 0, 15, 30)
   )
 
 # set font size to 11
@@ -892,13 +1256,23 @@ if (save_plots) {
   ggsave(
     p,
     filename = "../plots/paper_figs/dr_30_incl_clamped.pdf", device = "pdf",
-    height = 4, width = 2
+    height = 4, width = 1.5
   )
 }
 
 p
 ```
 
+```{r}
+# summary statistics
+data_ppt %>% 
+  group_by(obj_shape_sign) %>% 
+  summarise(
+    mean = mean(ppt_mean_angle),
+    ci = vector_confint(ppt_mean_angle),
+    n = n()
+  )
+```
 ```{r}
 # Comparison stats
 # paired t-test
@@ -989,21 +1363,22 @@ p <- data_exp %>%
 # add horizontal lines
 p <- p +
   geom_hline(
-    yintercept = c(0, 30), linewidth = 0.4,
+    yintercept = c(-30, 0, 30), linewidth = 0.4,
     colour = "#CCCCCC", linetype = "solid"
   ) +
   geom_hline(
-    yintercept = c(15), linewidth = 0.4,
+    yintercept = c(-15, 15), linewidth = 0.4,
     colour = "#CCCCCC", linetype = "dashed"
   )
 
 # add axis ticks
 p <- p +
   scale_y_continuous(
-    # limits = c(-15, 40),
-    breaks = c(0, 15, 30),
-    labels = c(0, 15, 30)
+    limits = c(-35, 35),
+    breaks = c(-30, -15, 0, 15, 30),
+    labels = c(-30, -15, 0, 15, 30)
   )
+
 
 # set font size to 11
 p <- p +
@@ -1040,11 +1415,21 @@ if (save_plots) {
   ggsave(
     p,
     filename = "../plots/paper_figs/dr_30_excl_clamped.pdf", device = "pdf",
-    height = 4, width = 2
+    height = 4, width = 1.5
   )
 }
 
 p
+```
+```{r}
+# summary statistics
+data_ppt %>% 
+  group_by(obj_shape_sign) %>% 
+  summarise(
+    mean = mean(ppt_mean_angle),
+    ci = vector_confint(ppt_mean_angle),
+    n = n()
+  )
 ```
 ```{r}
 # Comparison stats
@@ -1465,9 +1850,9 @@ p <- p +
 p <- p +
   scale_color_manual(
     values = c(
-      palette$get("s30-a"),
       palette$get("s30"),
-      palette$get("d30-a"),
+      palette$get("s30"),
+      palette$get("d30"),
       palette$get("d30")
     )
   )
@@ -1707,9 +2092,9 @@ p <- p +
 p <- p +
   scale_color_manual(
     values = c(
-      palette$get("s30-a"),
       palette$get("s30"),
-      palette$get("d30-a"),
+      palette$get("s30"),
+      palette$get("d30"),
       palette$get("d30")
     )
   )
@@ -1950,9 +2335,9 @@ p <- p +
 p <- p +
   scale_color_manual(
     values = c(
-      palette$get("s30-a"),
       palette$get("s30"),
-      palette$get("d30-a"),
+      palette$get("s30"),
+      palette$get("d30"),
       palette$get("d30")
     )
   )
