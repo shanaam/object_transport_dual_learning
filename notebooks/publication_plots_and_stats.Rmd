@@ -21,7 +21,9 @@ library(future) # for parallel processing
 library(collections)
 library(ggbeeswarm)
 
-library(ez) # for ANOVAs
+library(ez) # for ANOVAs NOTE:ez THE afex PACKAGE IS A LOT BETTER FOR POSTHOC TESTS
+library(afex) # for ANOVAs
+library(emmeans)
 library(effectsize) # for eta-squared
 library(BayesFactor)
 library(bayestestR)
@@ -671,26 +673,32 @@ data_ppt %>%
 ```
 
 ```{r}
-# temp_ANOVA <- aov(fixed_angle ~ trained_obj_factor * trained_hand_factor, data = sr_30_ppt_clamped)
-# 
-# # show ANOVA + assumptions
-# print(summary(temp_ANOVA), digits = 6)
-# eta_squared(temp_ANOVA)
-# TukeyHSD(temp_ANOVA)
-
 temp_ANOVA <- data_ppt %>%
   ezANOVA(wid = ppid,
         dv = fixed_angle, 
         within = .(trained_obj_factor, trained_hand_factor),
-        detailed = TRUE)
+        detailed = TRUE, return_aov = TRUE)
 
-temp_ANOVA
+temp_ANOVA$ANOVA
 ```
+```{r}
+# ANOVA using afex (identical values to above)
+(temp_ANOVA <- aov_car(fixed_angle ~ trained_obj_factor * trained_hand_factor + Error(ppid/(trained_obj_factor * trained_hand_factor)), data_ppt))
+```
+
+
 ```{r}
 bf <- anovaBF(fixed_angle ~ trained_obj_factor * trained_hand_factor + ppid, data = data.frame(data_ppt), whichRandom = "ppid", progress = FALSE)
 print(bf)
 bayesfactor_inclusion(bf)
 ```
+```{r}
+# posthoc tests
+(m1 <- emmeans(temp_ANOVA, ~ trained_hand_factor))
+pairs(m1)
+```
+
+
 ## Collapsing across shapes
 ```{r}
 sr_30_ppt_clamped <- sr_30_clamped %>%
@@ -1764,7 +1772,7 @@ p <- p +
 if (save_plots) {
   ggsave(
   p,
-  filename = "../plots/paper_figs/sr_30_step1_time.pdf", device = "pdf",
+  filename = "../plots/paper_figs/both_exp_step1_time.pdf", device = "pdf",
   height = 2, width = 4
   )
   }
@@ -1784,6 +1792,7 @@ sr_30_ppt_trial_sets$trial_set <- as.factor(sr_30_ppt_trial_sets$trial_set)
 sr_30_ppt_trial_sets$exp <- as.factor(sr_30_ppt_trial_sets$exp)
 sr_30_ppt_trial_sets$exp_trial_set <- factor(sr_30_ppt_trial_sets$exp_trial_set, 
                                              levels = c("sr_30_1", "sr_30_2", "dr_30_1", "dr_30_2"))
+sr_30_ppt_trial_sets$ppid <- as.factor(sr_30_ppt_trial_sets$ppid)
 
 sr_30_trial_set_values <- sr_30_ppt_trial_sets %>%
   group_by(exp_trial_set, exp, trial_set) %>%
@@ -1869,7 +1878,7 @@ p <- p +
 if (save_plots) {
   ggsave(
     p,
-    filename = "../plots/paper_figs/sr_30_step1_time_trial_set.pdf", device = "pdf",
+    filename = "../plots/paper_figs/both_exp_step1_time_trial_set.pdf", device = "pdf",
     height = 2, width = 2
   )
 }
@@ -1890,17 +1899,20 @@ data_ppt %>%
 ```
 
 ```{r}
-temp_ANOVA <- aov(mean_trial_set_step1_time ~ exp * trial_set, data = data_ppt)
-
-# show ANOVA + assumptions
-print(summary(temp_ANOVA), digits = 6)
-eta_squared(temp_ANOVA)
-TukeyHSD(temp_ANOVA)
+# ANOVA using afex (identical values to above)
+(temp_ANOVA <- aov_car(mean_trial_set_step1_time ~ exp * trial_set + Error(ppid/(trial_set)), data_ppt))
 ```
+
+
 ```{r}
-bf <- anovaBF(mean_trial_set_step1_time ~ exp * trial_set, data = data.frame(data_ppt), progress = FALSE)
+bf <- anovaBF(mean_trial_set_step1_time ~ exp * trial_set + ppid, data = data.frame(data_ppt), whichRandom = "ppid", progress = FALSE)
 print(bf)
 bayesfactor_inclusion(bf)
+```
+```{r}
+# posthoc tests
+(m1 <- emmeans(temp_ANOVA, ~ exp * trial_set))
+pairs(m1)
 ```
 Moderate evidence for the null hypothesis
 
@@ -2006,7 +2018,7 @@ p <- p +
 if (save_plots) {
   ggsave(
   p,
-  filename = "../plots/paper_figs/sr_30_step2_rt.pdf", device = "pdf",
+  filename = "../plots/paper_figs/both_exp_step2_rt.pdf", device = "pdf",
   height = 2, width = 4
   )
   }
@@ -2026,6 +2038,7 @@ sr_30_ppt_trial_sets$trial_set <- as.factor(sr_30_ppt_trial_sets$trial_set)
 sr_30_ppt_trial_sets$exp <- as.factor(sr_30_ppt_trial_sets$exp)
 sr_30_ppt_trial_sets$exp_trial_set <- factor(sr_30_ppt_trial_sets$exp_trial_set, 
                                              levels = c("sr_30_1", "sr_30_2", "dr_30_1", "dr_30_2"))
+sr_30_ppt_trial_sets$ppid <- as.factor(sr_30_ppt_trial_sets$ppid)
 
 sr_30_trial_set_values <- sr_30_ppt_trial_sets %>%
   group_by(exp_trial_set, exp, trial_set) %>%
@@ -2111,7 +2124,7 @@ p <- p +
 if (save_plots) {
   ggsave(
     p,
-    filename = "../plots/paper_figs/sr_30_step2_rt_trial_set.pdf", device = "pdf",
+    filename = "../plots/paper_figs/both_exp_step2_rt_trial_set.pdf", device = "pdf",
     height = 2, width = 2
   )
 }
@@ -2129,19 +2142,20 @@ data_ppt %>%
     n = n()
   )
 ```
-
 ```{r}
-temp_ANOVA <- aov(mean_trial_set_step2_rt ~ exp * trial_set, data = data_ppt)
-
-# show ANOVA + assumptions
-print(summary(temp_ANOVA), digits = 6)
-eta_squared(temp_ANOVA)
-TukeyHSD(temp_ANOVA)
+# ANOVA using afex (identical values to above)
+(temp_ANOVA <- aov_car(mean_trial_set_step2_rt ~ exp * trial_set + Error(ppid/(trial_set)), data_ppt))
 ```
+
 ```{r}
-bf <- anovaBF(mean_trial_set_step2_rt ~ exp * trial_set, data = data.frame(data_ppt), progress = FALSE)
+bf <- anovaBF(mean_trial_set_step2_rt ~ exp * trial_set + ppid, data = data.frame(data_ppt), whichRandom = "ppid", progress = FALSE)
 print(bf)
 bayesfactor_inclusion(bf)
+```
+```{r}
+# posthoc tests
+(m1 <- emmeans(temp_ANOVA, ~ exp * trial_set))
+pairs(m1)
 ```
 
 ### Movement Time of step 2 over time
@@ -2241,13 +2255,11 @@ p <- p +
     )
   )
 
-
-
 # save
 if (save_plots) {
   ggsave(
   p,
-  filename = "../plots/paper_figs/sr_30_step2_mt.pdf", device = "pdf",
+  filename = "../plots/paper_figs/both_exp_step2_mt.pdf", device = "pdf",
   height = 2, width = 4
   )
   }
@@ -2269,6 +2281,7 @@ sr_30_ppt_trial_sets$trial_set <- as.factor(sr_30_ppt_trial_sets$trial_set)
 sr_30_ppt_trial_sets$exp <- as.factor(sr_30_ppt_trial_sets$exp)
 sr_30_ppt_trial_sets$exp_trial_set <- factor(sr_30_ppt_trial_sets$exp_trial_set, 
                                              levels = c("sr_30_1", "sr_30_2", "dr_30_1", "dr_30_2"))
+sr_30_ppt_trial_sets$ppid <- as.factor(sr_30_ppt_trial_sets$ppid)
 
 sr_30_trial_set_values <- sr_30_ppt_trial_sets %>%
   group_by(exp_trial_set, exp, trial_set) %>%
@@ -2354,7 +2367,7 @@ p <- p +
 if (save_plots) {
   ggsave(
     p,
-    filename = "../plots/paper_figs/sr_30_step2_mt_trial_set.pdf", device = "pdf",
+    filename = "../plots/paper_figs/both_exp_step2_mt_trial_set.pdf", device = "pdf",
     height = 2, width = 2
   )
 }
@@ -2362,7 +2375,7 @@ if (save_plots) {
 p
 ```
 
-### Step 2 Reaction Time statistics
+### Step 2 Execution Time statistics
 ```{r}
 data_ppt %>%
   group_by(exp_trial_set) %>%
@@ -2375,18 +2388,21 @@ data_ppt %>%
 ```
 
 ```{r}
-temp_ANOVA <- aov(mean_trial_set_step2_mt ~ exp * trial_set, data = data_ppt)
-
-# show ANOVA + assumptions
-print(summary(temp_ANOVA), digits = 6)
-eta_squared(temp_ANOVA)
-TukeyHSD(temp_ANOVA)
+# ANOVA using afex (identical values to above)
+(temp_ANOVA <- aov_car(mean_trial_set_step2_mt ~ exp * trial_set + Error(ppid/(trial_set)), data_ppt))
 ```
+
 ```{r}
-bf <- anovaBF(mean_trial_set_step2_mt ~ exp * trial_set, data = data.frame(data_ppt), progress = FALSE)
+bf <- anovaBF(mean_trial_set_step2_mt ~ exp * trial_set + ppid, data = data.frame(data_ppt), whichRandom = "ppid", progress = FALSE)
 print(bf)
 bayesfactor_inclusion(bf)
 ```
+```{r}
+# posthoc tests
+(m1 <- emmeans(temp_ANOVA, ~ exp * trial_set))
+pairs(m1)
+```
+
 
 ```{r}
 # empty
