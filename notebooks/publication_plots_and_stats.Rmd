@@ -43,7 +43,7 @@ intercept <- function(x, y, slope) {
 }
 
 # settings
-save_plots = TRUE
+save_plots = FALSE
 ```
 
 ## Data Import and Summaries
@@ -1229,6 +1229,13 @@ p <- p +
     labels = c(-30, -15, 0, 15, 30)
   )
 
+p <- p +
+  scale_x_discrete(
+    labels = c(
+      "CW", "CCW"
+    )
+  )
+
 # set font size to 11
 p <- p +
   theme(text = element_text(size = 11))
@@ -1385,6 +1392,13 @@ p <- p +
     limits = c(-35, 35),
     breaks = c(-30, -15, 0, 15, 30),
     labels = c(-30, -15, 0, 15, 30)
+  )
+
+p <- p +
+  scale_x_discrete(
+    labels = c(
+      "CW", "CCW"
+    )
   )
 
 
@@ -1696,7 +1710,7 @@ p <- data %>%
   theme(legend.position = "none") +
   labs(
     x = NULL,
-    y = "Step 1 Time (s)"
+    y = "Reach Step\nTime (s)"
   )
 
 # add horizontal lines
@@ -1940,7 +1954,7 @@ p <- data %>%
   theme(legend.position = "none") +
   labs(
     x = NULL,
-    y = "Step 2 RT (s)"
+    y = "Transport Step\nReaction Time (s)"
   )
 
 # add horizontal lines
@@ -2181,7 +2195,7 @@ p <- data %>%
   theme(legend.position = "none") +
   labs(
     x = NULL,
-    y = "Step 2 MT (s)"
+    y = "Transport Step\nExecution Time (s)"
   )
 
 # add horizontal lines
