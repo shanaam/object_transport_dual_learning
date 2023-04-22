@@ -43,7 +43,7 @@ intercept <- function(x, y, slope) {
 }
 
 # settings
-save_plots = FALSE
+save_plots = TRUE
 ```
 
 ## Data Import and Summaries
@@ -135,6 +135,213 @@ both_ppt_training <- fread("../data/misc/both_ppt_training.csv")
 # # save the above as a csv
 # fwrite(both_ppt_training, "../data/misc/both_ppt_training.csv")
 ```
+
+# Methods Figures
+## Single Learning Method Figure
+
+```{r}
+# isolate one participant
+sr_30_methods <- sr_30_all %>%
+  filter(ppid == "sr_30_1") 
+
+# if block_num == 15, change to 16
+sr_30_methods <- sr_30_methods %>%
+  mutate(block_num = case_when(
+    block_num == 15 ~ 16,
+    TRUE ~ block_num
+  ))
+
+sr_30_methods$trial_num <- sr_30_methods$trial_num - 47
+
+# plot
+# set up the plot
+p <- sr_30_methods %>%
+    ggplot(aes(
+        x = trial_num, y = cursor_rotation,
+        fill = hand
+    ))
+
+# add classic theme
+p <- p + theme_classic()
+
+# add a solid horizontal lines at 0 and 630 and dashed lines at 15
+p <- p +
+    geom_hline(
+        yintercept = c(0, 30), linewidth = 0.4,
+        colour = "#CCCCCC", linetype = "solid"
+    ) +
+    geom_hline(
+        yintercept = c(15), linewidth = 0.4,
+        colour = "#CCCCCC", linetype = "dashed"
+    )
+
+for (block in unique(sr_30_methods$block_num)) {
+  # add rotation line plot
+  p <- p +
+      geom_line(
+        data=sr_30_methods %>% 
+          filter(block_num == block,
+                 type=="reach"), 
+        lwd = 2, colour = palette$get("s30"))
+  
+  p <- p +
+      geom_tile(
+        data=sr_30_methods %>% 
+          filter(block_num == block,
+                 type=="clamped"),
+        aes(
+          y=15, height=30
+        ),
+        alpha = 0.7
+      )
+  }
+
+# # set colour palette
+p <- p +
+    scale_fill_manual(
+      values = c(
+        palette$get("s30-a"), palette$get("s30")
+        ), 
+      labels = c(
+        "Left Hand", "Right Hand"
+    )
+    )
+
+# set x and y axis labels
+p <- p +
+    labs(
+        x = "Trial Number",
+        y = "Visuomotor Rotation (°)"
+    )
+
+# set y tick labels
+p <- p +
+    scale_y_continuous(
+        limits = c(-5, 40),
+        breaks = c(0, 15, 30),
+        labels = c(0, -15, -30)
+    ) +
+    scale_x_continuous(
+        limits = c(0, 420),
+        breaks = c(0, 80, 160, 240, 320, 400)
+    )
+
+# set font size to 11
+p <- p +
+  theme(text = element_text(size = 11))
+
+# remove the legend
+p <- p + theme(legend.position = "none")
+
+# save
+if (save_plots) {
+  ggsave(
+  p,
+  filename = "../plots/paper_figs/sr_30_methods.pdf", device = "pdf",
+  height = 2.5, width = 6
+  )
+  }
+
+p
+```
+
+## Dual Learning Method Figure
+
+```{r}
+# isolate one participant
+dr_30_methods <- dr_30_all %>%
+  filter(ppid == "dr_30_1") 
+
+# # if block_num == 15, change to 16
+# dr_30_methods <- dr_30_methods %>%
+#   mutate(block_num = case_when(
+#     block_num == 15 ~ 16,
+#     TRUE ~ block_num
+#   ))
+
+dr_30_methods$trial_num <- dr_30_methods$trial_num - 32
+
+# plot
+# set up the plot
+p <- dr_30_methods %>%
+    ggplot(aes(
+        x = trial_num, y = cursor_rotation
+    ))
+
+# add classic theme
+p <- p + theme_classic()
+
+# add a solid horizontal lines at 0 and 30 and dashed lines at 15
+p <- p +
+    geom_hline(
+        yintercept = c(-30, 0, 30), linewidth = 0.4,
+        colour = "#CCCCCC", linetype = "solid"
+    ) +
+    geom_hline(
+        yintercept = c(-15, 15), linewidth = 0.4,
+        colour = "#CCCCCC", linetype = "dashed"
+    )
+
+for (block in unique(dr_30_methods$block_num)) {
+  # add rotation line plot
+  p <- p +
+      geom_line(
+        data=dr_30_methods %>% 
+          filter(block_num == block,
+                 type=="reach"), 
+        lwd = 2, colour = palette$get("d30"))
+  
+  p <- p +
+      geom_tile(
+        data=dr_30_methods %>% 
+          filter(block_num == block,
+                 type=="clamped"),
+        aes(
+          y=15, height=30
+        ),
+        alpha = 0.7
+      )
+  }
+
+# set x and y axis labels
+p <- p +
+    labs(
+        x = "Trial Number",
+        y = "Visuomotor Rotation (°)"
+    )
+
+# set y tick labels
+p <- p +
+    scale_y_continuous(
+        limits = c(-35, 40),
+        breaks = c(-30, -15, 0, 15, 30),
+        labels = c(-30, -15, 0, 15, 30)
+    )
+    # scale_x_continuous(
+    #     limits = c(0, 420),
+    #     breaks = c(0, 80, 160, 240, 320, 400)
+    # )
+
+# set font size to 11
+p <- p +
+  theme(text = element_text(size = 11))
+
+# remove the legend
+# p <- p + theme(legend.position = "none")
+
+# save
+if (save_plots) {
+  ggsave(
+  p,
+  filename = "../plots/paper_figs/dr_30_methods.pdf", device = "pdf",
+  height = 2.5, width = 6
+  )
+  }
+
+p
+```
+
+
 # S30 Training per-trial plot
 ```{r}
 sr_30_exp_training <- sr_30_ppt_training %>%
