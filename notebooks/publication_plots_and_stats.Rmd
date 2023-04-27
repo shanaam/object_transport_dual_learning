@@ -1142,7 +1142,7 @@ p <- data_trial_set %>%
 # add horizontal lines
 p <- p +
   geom_hline(
-    yintercept = c(0, 30), linewidth = 0.4,
+    yintercept = c(-30, 0, 30), linewidth = 0.4,
     colour = "#CCCCCC", linetype = "solid"
   ) +
   geom_hline(
@@ -1153,9 +1153,9 @@ p <- p +
 # add axis ticks
 p <- p +
   scale_y_continuous(
-    limits = c(-25, 40),
-    breaks = c(-15, 0, 15, 30),
-    labels = c(-15, 0, 15, 30)
+    limits = c(-30, 30),
+    breaks = c(-30, -15, 0, 15, 30),
+    labels = c(-30, -15, 0, 15, 30)
   )
 
 # set font size to 11
@@ -1271,7 +1271,7 @@ p <- data_trial_set %>%
 # add horizontal lines
 p <- p +
   geom_hline(
-    yintercept = c(0, 30), linewidth = 0.4,
+    yintercept = c(-30, 0, 30), linewidth = 0.4,
     colour = "#CCCCCC", linetype = "solid"
   ) +
   geom_hline(
@@ -1282,9 +1282,9 @@ p <- p +
 # add axis ticks
 p <- p +
   scale_y_continuous(
-    limits = c(-25, 40),
-    breaks = c(-15, 0, 15, 30),
-    labels = c(-15, 0, 15, 30)
+    limits = c(-30, 30),
+    breaks = c(-30, -15, 0, 15, 30),
+    labels = c(-30, -15, 0, 15, 30)
   )
 
 # set font size to 11
@@ -1414,7 +1414,7 @@ p <- data_exp %>%
   theme(legend.position = "none") +
   labs(
     x = NULL,
-    y = "Hand Angle (°)"
+    y = NULL
   )
 
 # add horizontal lines
@@ -1431,7 +1431,7 @@ p <- p +
 # add axis ticks
 p <- p +
   scale_y_continuous(
-    limits = c(-35, 35),
+    limits = c(-30, 30),
     breaks = c(-30, -15, 0, 15, 30),
     labels = c(-30, -15, 0, 15, 30)
   )
@@ -1596,7 +1596,7 @@ p <- p +
 # add axis ticks
 p <- p +
   scale_y_continuous(
-    limits = c(-35, 35),
+    limits = c(-30, 30),
     breaks = c(-30, -15, 0, 15, 30),
     labels = c(-30, -15, 0, 15, 30)
   )
