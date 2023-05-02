@@ -512,8 +512,187 @@ f2
 ```
 
 
+# Slopes and Asymptotes (not included)
+```{r}
+# 
+# both_ppt_training$exp <- factor(both_ppt_training$exp)
+# 
+# both_exp_training <- both_ppt_training %>%
+#   group_by(exp) %>%
+#   summarise(
+#     mean_learning_rate = mean(ppt_learning_rate),
+#     ci_learning_rate = vector_confint(ppt_learning_rate),
+#     mean_asymptote = mean(ppt_asymptote),
+#     ci_asymptote = vector_confint(ppt_asymptote)
+#   )
+# 
+# data_ppt <- both_ppt_training
+# data_exp <- both_exp_training
+# 
+# # set up plot
+# p <- data_exp %>%
+#   ggplot(
+#     aes(
+#       x = exp,
+#       y = mean_learning_rate,
+#       color = exp
+#     )
+#   ) +
+#   theme_classic() +
+#   theme(legend.position = "none") +
+#   labs(
+#     x = "Experiment",
+#     y = "Learning Rate"
+#   )
+# 
+# # set font size to 11
+# p <- p +
+#   theme(text = element_text(size = 11))
+# 
+# # add data points
+# p <- p +
+#   geom_beeswarm(
+#     data = data_ppt,
+#     aes(
+#       x = exp,
+#       y = ppt_learning_rate,
+#       color = exp
+#     ),
+#     size = 1,
+#     alpha = 0.1
+#   ) +
+#   geom_linerange(
+#     aes(
+#       ymin = mean_learning_rate - ci_learning_rate,
+#       ymax = mean_learning_rate + ci_learning_rate
+#     ),
+#     alpha = 0.5, lwd = 2
+#   ) +
+#   geom_point()
+# 
+# p <- p +
+#   scale_color_manual(
+#     values = c("#f07c04", "#a30f15")
+#   )
+# 
+# # save
+# if (save_plots) {
+#   ggsave(
+#     p,
+#     filename = "../plots/paper_figs/both_ppt_training_learning_rate.pdf", device = "pdf",
+#     height = 4, width = 2
+#   )
+# }
+# 
+# p
+```
+```{r}
+# both_ppt_training %>%
+#   group_by(exp) %>%
+#   summarise(
+#     mean = mean(ppt_learning_rate),
+#     sd = sd(ppt_learning_rate),
+#     ci = vector_confint(ppt_learning_rate),
+#     n = n()
+#   )
+```
 
-Stats for the above plot
+```{r}
+# temp_ANOVA <- aov(ppt_learning_rate ~ exp, data = both_ppt_training)
+# 
+# # show ANOVA + assumptions
+# print(summary(temp_ANOVA), digits = 6)
+# eta_squared(temp_ANOVA)
+# TukeyHSD(temp_ANOVA)
+```
+```{r}
+# bf <- anovaBF(ppt_learning_rate ~ exp, data = data.frame(both_ppt_training), progress = FALSE)
+# print(bf)
+# bayesfactor_inclusion(bf)
+```
+
+```{r}
+# # set up plot
+# p <- data_exp %>%
+#   ggplot(
+#     aes(
+#       x = exp,
+#       y = mean_asymptote,
+#       color = exp
+#     )
+#   ) +
+#   theme_classic() +
+#   theme(legend.position = "none") +
+#   labs(
+#     x = "Experiment",
+#     y = "Asymptote"
+#   )
+# 
+# # set font size to 11
+# p <- p +
+#   theme(text = element_text(size = 11))
+# 
+# # add data points
+# p <- p +
+#   geom_beeswarm(
+#     data = data_ppt,
+#     aes(
+#       x = exp,
+#       y = ppt_asymptote,
+#       color = exp
+#     ),
+#     size = 1,
+#     alpha = 0.1
+#   ) +
+#   geom_linerange(
+#     aes(
+#       ymin = mean_asymptote - ci_asymptote,
+#       ymax = mean_asymptote + ci_asymptote
+#     ),
+#     alpha = 0.5, lwd = 2
+#   ) +
+#   geom_point()
+# 
+# p <- p +
+#   scale_color_manual(
+#     values = c("#f07c04", "#a30f15")
+#   )
+# 
+# # save
+# if (save_plots) {
+#   ggsave(
+#     p,
+#     filename = "../plots/paper_figs/both_ppt_training_asmptote.pdf", device = "pdf",
+#     height = 4, width = 2
+#   )
+# }
+# 
+# p
+```
+```{r}
+# both_ppt_training %>%
+#   group_by(exp) %>%
+#   summarise(
+#     mean = mean(ppt_asymptote),
+#     sd = sd(ppt_asymptote),
+#     ci = vector_confint(ppt_asymptote),
+#     n = n()
+#   )
+```
+
+```{r}
+# temp_ANOVA <- aov(ppt_asymptote ~ exp, data = both_ppt_training)
+# 
+# # show ANOVA + assumptions
+# print(summary(temp_ANOVA), digits = 6)
+# eta_squared(temp_ANOVA)
+# TukeyHSD(temp_ANOVA)
+```
+```{r}
+# bf <- anovaBF(ppt_asymptote ~ exp, data = data.frame(both_ppt_training), progress = FALSE)
+# print(bf)
+# bayesfactor_inclusion(bf)
+```
 
 ```{r}
 # Fin

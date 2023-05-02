@@ -43,10 +43,10 @@ intercept <- function(x, y, slope) {
 }
 
 # settings
-save_plots = TRUE
+save_plots = FALSE
 ```
 
-## Data Import and Summaries
+# Data Import and Cleaning
 ```{r}
 # import data
 data_path <- "../data/preprocessed/omnibus/omnibus_bl_corrected.csv"
@@ -112,11 +112,11 @@ dr_30_incl_clamp <- dr_30_all %>%
 dr_30_excl_clamp <- dr_30_all %>%
   filter(block_num %in% c(13, 14))
 
-# load in both_ppt_trainng
-both_ppt_training <- fread("../data/misc/both_ppt_training.csv")
+# both experiment rbind
+both_ppt_training <- rbind(sr_30_ppt_training, dr_30_ppt_training)
 
-# # both experiment rbind
-# both_ppt_training <- rbind(sr_30_ppt_training, dr_30_ppt_training)
+# # load in both_ppt_trainng
+# both_ppt_training <- fread("../data/misc/both_ppt_training.csv")
 # 
 # both_ppt_training <- both_ppt_training %>%
 #   group_by(ppid) %>%
@@ -342,7 +342,8 @@ p
 ```
 
 
-# S30 Training per-trial plot
+# Single Learning Experiment
+## Learning Curve
 ```{r}
 sr_30_exp_training <- sr_30_ppt_training %>%
   group_by(trial_num) %>% # note: only one where don't need to group_by ppid
@@ -442,7 +443,7 @@ if (save_plots) {
 p
 ```
 
-# S30 Training trial set plot - Step 1
+## Training Phase Trial Sets - Reach Step
 ```{r}
 sr_30_ppt_trial_sets <- sr_30_ppt_training %>%
   filter(trial_set < 5) %>%
@@ -541,7 +542,7 @@ if (save_plots) {
 p
 ```
 
-# S30 Training trial set plot
+## Training Phase Trial Sets - Transport Step
 ```{r}
 sr_30_ppt_trial_sets <- sr_30_ppt_training %>%
   filter(trial_set < 5) %>%
@@ -639,7 +640,6 @@ if (save_plots) {
   
 p
 ```
-### Single Rotation Training Analysis
 
 ```{r}
 # summary statistics
@@ -679,8 +679,6 @@ cohen.d(group1, group2)
 bf <- ttestBF(x = diffs)
 bf
 ```
-The BF for alternative vs null is 219463158191
-
 
 
 ```{r}
@@ -697,8 +695,6 @@ p <- trialset_paired %>%
 p
 ```
 
-### Single Rotation Training Analysis
-
 ```{r}
 # summary statistics
 data_ppt %>% 
@@ -738,7 +734,7 @@ bf <- ttestBF(x = diffs)
 bf
 ```
 
-# S30 Clamped
+## Transfer of Learning
 ```{r}
 sr_30_ppt_clamped <- sr_30_clamped %>%
   group_by(ppid, trained_obj_hand_factor, trained_obj_factor, trained_hand_factor) %>%
@@ -906,7 +902,7 @@ pairs(m1)
 ```
 
 
-## Collapsing across shapes
+### Collapsing across shapes
 ```{r}
 sr_30_ppt_clamped <- sr_30_clamped %>%
   mutate(fixed_angle = case_when(
@@ -936,8 +932,7 @@ sr_30_ppt_clamped %>%
   )
 ```
 
-## Compare trained_hand with last trial set of training
-
+Compare trained_hand with last trial set of training
 ```{r}
 clamped_trained_hand_df <- sr_30_ppt_clamped %>%
   filter(trained_hand_factor == "trained_hand") %>%
@@ -968,9 +963,7 @@ cohen.d(group1, group2)
 ttestBF(x = diffs)
 
 ```
-
-## Compare untrained hand
-
+Compare untrained hand
 ```{r}
 clamped_trained_hand_df <- sr_30_ppt_clamped %>%
   filter(trained_hand_factor == "untrained_hand") %>%
@@ -988,21 +981,8 @@ ttestBF(x = group1)
 
 ```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# D30 Training per-trial plot
+# Dual Learning Experiment
+## 
 ```{r}
 dr_30_exp_training <- dr_30_ppt_training %>%
   group_by(trial_num_in_block) %>%
@@ -1103,7 +1083,7 @@ if (save_plots) {
 p
 ```
 
-# D30 Training trial set plot - Step 1
+## Training Phase Trial Sets - Reach Step
 ```{r}
 dr_30_ppt_trial_sets <- dr_30_ppt_training %>%
   filter(trial_set < 5) %>%
@@ -1232,7 +1212,7 @@ cohen.d(group1, group2)
 ttestBF(x = diffs)
 ```
 
-# DR30 Training trial set plot - Step 2
+## Training Phase Trial Sets - Transport Step
 ```{r}
 dr_30_ppt_trial_sets <- dr_30_ppt_training %>%
   filter(trial_set < 5) %>%
@@ -1361,7 +1341,6 @@ cohen.d(group1, group2)
 ttestBF(x = diffs)
 ```
 
-
 ```{r}
 trialset_paired <- 
   data_ppt %>%
@@ -1376,9 +1355,8 @@ p <- trialset_paired %>%
 p
 ```
 
-
-
-# D30 include strategy clamped plot
+## Clamped Tasks
+### Not excluding strategy
 ```{r}
 dr_30_ppt_incl_clamped <- dr_30_incl_clamp %>%
   group_by(ppid, obj_shape_sign) %>%
@@ -1516,7 +1494,6 @@ cohen.d(group1, group2)
 ttestBF(x = diffs)
 ```
 
-
 ```{r}
 trialset_paired <- 
   data_ppt %>%
@@ -1542,8 +1519,7 @@ dr_30_ppt_incl_clamped %>%
   )
 ```
 
-
-# D30 exclude strategy clamped plot
+### Exclude-strategy reaches
 ```{r}
 dr_30_ppt_excl_clamped <- dr_30_excl_clamp %>%
   group_by(ppid, obj_shape_sign) %>%
@@ -1696,194 +1672,9 @@ p
 ```
 
 
+# Reaction and Execution Times
 
-
-# Plot slope and asymptote for both_ppt_training
-```{r}
-
-both_ppt_training$exp <- factor(both_ppt_training$exp)
-
-both_exp_training <- both_ppt_training %>%
-  group_by(exp) %>%
-  summarise(
-    mean_learning_rate = mean(ppt_learning_rate),
-    ci_learning_rate = vector_confint(ppt_learning_rate),
-    mean_asymptote = mean(ppt_asymptote),
-    ci_asymptote = vector_confint(ppt_asymptote)
-  )
-
-data_ppt <- both_ppt_training
-data_exp <- both_exp_training
-
-# set up plot
-p <- data_exp %>%
-  ggplot(
-    aes(
-      x = exp,
-      y = mean_learning_rate,
-      color = exp
-    )
-  ) +
-  theme_classic() +
-  theme(legend.position = "none") +
-  labs(
-    x = "Experiment",
-    y = "Learning Rate"
-  )
-
-# set font size to 11
-p <- p +
-  theme(text = element_text(size = 11))
-
-# add data points
-p <- p +
-  geom_beeswarm(
-    data = data_ppt,
-    aes(
-      x = exp,
-      y = ppt_learning_rate,
-      color = exp
-    ),
-    size = 1,
-    alpha = 0.1
-  ) +
-  geom_linerange(
-    aes(
-      ymin = mean_learning_rate - ci_learning_rate,
-      ymax = mean_learning_rate + ci_learning_rate
-    ),
-    alpha = 0.5, lwd = 2
-  ) +
-  geom_point()
-
-p <- p +
-  scale_color_manual(
-    values = c("#f07c04", "#a30f15")
-  )
-
-# save
-if (save_plots) {
-  ggsave(
-    p,
-    filename = "../plots/paper_figs/both_ppt_training_learning_rate.pdf", device = "pdf",
-    height = 4, width = 2
-  )
-}
-
-p
-```
-```{r}
-both_ppt_training %>%
-  group_by(exp) %>%
-  summarise(
-    mean = mean(ppt_learning_rate),
-    sd = sd(ppt_learning_rate),
-    ci = vector_confint(ppt_learning_rate),
-    n = n()
-  )
-```
-
-```{r}
-temp_ANOVA <- aov(ppt_learning_rate ~ exp, data = both_ppt_training)
-
-# show ANOVA + assumptions
-print(summary(temp_ANOVA), digits = 6)
-eta_squared(temp_ANOVA)
-TukeyHSD(temp_ANOVA)
-```
-```{r}
-bf <- anovaBF(ppt_learning_rate ~ exp, data = data.frame(both_ppt_training), progress = FALSE)
-print(bf)
-bayesfactor_inclusion(bf)
-```
-
-```{r}
-# set up plot
-p <- data_exp %>%
-  ggplot(
-    aes(
-      x = exp,
-      y = mean_asymptote,
-      color = exp
-    )
-  ) +
-  theme_classic() +
-  theme(legend.position = "none") +
-  labs(
-    x = "Experiment",
-    y = "Asymptote"
-  )
-
-# set font size to 11
-p <- p +
-  theme(text = element_text(size = 11))
-
-# add data points
-p <- p +
-  geom_beeswarm(
-    data = data_ppt,
-    aes(
-      x = exp,
-      y = ppt_asymptote,
-      color = exp
-    ),
-    size = 1,
-    alpha = 0.1
-  ) +
-  geom_linerange(
-    aes(
-      ymin = mean_asymptote - ci_asymptote,
-      ymax = mean_asymptote + ci_asymptote
-    ),
-    alpha = 0.5, lwd = 2
-  ) +
-  geom_point()
-
-p <- p +
-  scale_color_manual(
-    values = c("#f07c04", "#a30f15")
-  )
-
-# save
-if (save_plots) {
-  ggsave(
-    p,
-    filename = "../plots/paper_figs/both_ppt_training_asmptote.pdf", device = "pdf",
-    height = 4, width = 2
-  )
-}
-
-p
-```
-```{r}
-both_ppt_training %>%
-  group_by(exp) %>%
-  summarise(
-    mean = mean(ppt_asymptote),
-    sd = sd(ppt_asymptote),
-    ci = vector_confint(ppt_asymptote),
-    n = n()
-  )
-```
-
-```{r}
-temp_ANOVA <- aov(ppt_asymptote ~ exp, data = both_ppt_training)
-
-# show ANOVA + assumptions
-print(summary(temp_ANOVA), digits = 6)
-eta_squared(temp_ANOVA)
-TukeyHSD(temp_ANOVA)
-```
-```{r}
-bf <- anovaBF(ppt_asymptote ~ exp, data = data.frame(both_ppt_training), progress = FALSE)
-print(bf)
-bayesfactor_inclusion(bf)
-```
-
-
-# Kinematic measures
-
-## SR30 
+## Both Experiments
 
 ### Total Movement time of STEP 1 over time
 
