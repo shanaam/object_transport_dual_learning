@@ -75,7 +75,7 @@ sr_30_ppt_training <- sr_30_all %>%
   filter(block_num == 16) %>%
   mutate(trial_set = case_when(
     trial_num <= 141 ~ 1,
-    trial_num >= 316 ~ 2,
+    trial_num >= 310 ~ 2,
     TRUE ~ 100
   ))
 
@@ -101,7 +101,7 @@ dr_30_ppt_training <- dr_30_all %>%
   filter(block_num == 7) %>%
   mutate(trial_set = case_when(
     trial_num <= 78 ~ 1,
-    trial_num >= 253 ~ 2,
+    trial_num >= 247 ~ 2,
     TRUE ~ 100
   ))
 
@@ -389,7 +389,7 @@ p <- p +
     colour = "#CCCCCC", fill = "#CCCCCC"
   ) +
   geom_rect(
-    xmin = 178, xmax = 180,
+    xmin = 172, xmax = 180,
     ymin = -10, ymax = 35,
     colour = "#CCCCCC", fill = "#CCCCCC"
   )
@@ -449,7 +449,8 @@ sr_30_ppt_trial_sets <- sr_30_ppt_training %>%
   filter(trial_set < 5) %>%
   group_by(ppid, trial_set) %>%
   summarise(
-    mean_trial_set_angle = mean(unsigned_hand_angle)
+    mean_trial_set_angle = mean(unsigned_hand_angle),
+    n = n()
   )
 
 sr_30_ppt_trial_sets$trial_set <- as.factor(sr_30_ppt_trial_sets$trial_set)
@@ -548,7 +549,8 @@ sr_30_ppt_trial_sets <- sr_30_ppt_training %>%
   filter(trial_set < 5) %>%
   group_by(ppid, trial_set) %>%
   summarise(
-    mean_trial_set_angle = mean(unsigned_obj_angle)
+    mean_trial_set_angle = mean(unsigned_obj_angle),
+    n = n()
   )
 
 sr_30_ppt_trial_sets$trial_set <- as.factor(sr_30_ppt_trial_sets$trial_set)
@@ -680,20 +682,6 @@ bf <- ttestBF(x = diffs)
 bf
 ```
 
-
-```{r}
-trialset_paired <- 
-  data_ppt %>%
-  dabest(trial_set, mean_trial_set_angle, 
-         idx = c("1", "2"), 
-         paired = TRUE, id.col = ppid)
-
-p <- trialset_paired %>% 
-  mean_diff() %>% 
-  plot()
-
-p
-```
 
 ```{r}
 # summary statistics
@@ -1029,7 +1017,7 @@ p <- p +
     colour = "#CCCCCC", fill = "#CCCCCC"
   ) +
   geom_rect(
-    xmin = 178, xmax = 180,
+    xmin = 172, xmax = 180,
     ymin = -10, ymax = 15,
     colour = "#CCCCCC", fill = "#CCCCCC"
   )
@@ -1089,7 +1077,8 @@ dr_30_ppt_trial_sets <- dr_30_ppt_training %>%
   filter(trial_set < 5) %>%
   group_by(ppid, trial_set) %>%
   summarise(
-    mean_trial_set_angle = mean(unsigned_hand_angle)
+    mean_trial_set_angle = mean(unsigned_hand_angle),
+    n()
   )
 
 dr_30_ppt_trial_sets$trial_set <- as.factor(dr_30_ppt_trial_sets$trial_set)
@@ -1212,13 +1201,26 @@ cohen.d(group1, group2)
 ttestBF(x = diffs)
 ```
 
+### One sample t-test for final trial-set
+```{r}
+# t-test
+t.test(group2)
+
+# Effect size
+cohen.d(group2, f = NA)
+
+# Bayes factor
+ttestBF(x = group2)
+```
+
 ## Training Phase Trial Sets - Transport Step
 ```{r}
 dr_30_ppt_trial_sets <- dr_30_ppt_training %>%
   filter(trial_set < 5) %>%
   group_by(ppid, trial_set) %>%
   summarise(
-    mean_trial_set_angle = mean(unsigned_obj_angle)
+    mean_trial_set_angle = mean(unsigned_obj_angle),
+    n()
   )
 
 dr_30_ppt_trial_sets$trial_set <- as.factor(dr_30_ppt_trial_sets$trial_set)
@@ -1340,20 +1342,18 @@ cohen.d(group1, group2)
 # Bayes factor
 ttestBF(x = diffs)
 ```
-
+### One sample t-test for final trial-set
 ```{r}
-trialset_paired <- 
-  data_ppt %>%
-  dabest(trial_set, mean_trial_set_angle, 
-         idx = c("1", "2"), 
-         paired = TRUE, id.col = ppid)
+# t-test
+t.test(group2)
 
-p <- trialset_paired %>% 
-  mean_diff() %>% 
-  plot()
+# Effect size
+cohen.d(group2, f = NA)
 
-p
+# Bayes factor
+ttestBF(x = group2)
 ```
+
 
 ## Clamped Tasks
 ### Not excluding strategy
@@ -1494,19 +1494,6 @@ cohen.d(group1, group2)
 ttestBF(x = diffs)
 ```
 
-```{r}
-trialset_paired <- 
-  data_ppt %>%
-  dabest(obj_shape_sign, ppt_mean_angle, 
-         idx = c("-1", "1"), 
-         paired = TRUE, id.col = ppid)
-
-p <- trialset_paired %>% 
-  mean_diff() %>% 
-  plot()
-
-p
-```
 
 ```{r}
 dr_30_ppt_incl_clamped %>%
@@ -1657,20 +1644,6 @@ cohen.d(group1, group2)
 ttestBF(x = diffs)
 ```
 
-```{r}
-trialset_paired <- 
-  data_ppt %>%
-  dabest(obj_shape_sign, ppt_mean_angle, 
-         idx = c("-1", "1"), 
-         paired = TRUE, id.col = ppid)
-
-p <- trialset_paired %>% 
-  mean_diff() %>% 
-  plot()
-
-p
-```
-
 
 # Reaction and Execution Times
 
@@ -1730,7 +1703,7 @@ p <- p +
     colour = "#CCCCCC", fill = "#CCCCCC"
   ) +
   geom_rect(
-    xmin = 178, xmax = 180,
+    xmin = 172, xmax = 180,
     ymin = -1, ymax = 7,
     colour = "#CCCCCC", fill = "#CCCCCC"
   )
@@ -1974,7 +1947,7 @@ p <- p +
     colour = "#CCCCCC", fill = "#CCCCCC"
   ) +
   geom_rect(
-    xmin = 178, xmax = 180,
+    xmin = 172, xmax = 180,
     ymin = -0.05, ymax = .7,
     colour = "#CCCCCC", fill = "#CCCCCC"
     )
@@ -2216,7 +2189,7 @@ p <- p +
     colour = "#CCCCCC", fill = "#CCCCCC"
   ) +
   geom_rect(
-    xmin = 178, xmax = 180,
+    xmin = 172, xmax = 180,
     ymin = -0.05, ymax = 1.7,
     colour = "#CCCCCC", fill = "#CCCCCC"
     )

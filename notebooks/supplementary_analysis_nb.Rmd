@@ -1,0 +1,787 @@
+---
+title: "Supplementary Data Analysis"
+author: "Shanaa Modchalingam"
+date: '2023'
+output: 
+  html_notebook:
+    toc: true
+    toc_float: true
+    number_sections: true
+    df_print: paged
+---
+
+```{r setup, include=FALSE, warning=FALSE}
+rm(list = ls()) # clean environment
+
+source("../src/helper_funcs.R")
+library(data.table)
+library(tidyverse)
+library(future) # for parallel processing
+library(collections)
+library(ggbeeswarm)
+
+library(ez) # for ANOVAs NOTE:ez THE afex PACKAGE IS A LOT BETTER FOR POSTHOC TESTS
+library(afex) # for ANOVAs
+library(emmeans)
+library(effectsize) # for eta-squared
+library(BayesFactor)
+library(bayestestR)
+
+library(Reach) # from github: thartbm/Reach
+library(dabestr)
+
+# Helper functions
+##### Helper functions #####
+slope <- function(x, y) {
+  return(cov(x, y) / var(x))
+}
+
+intercept <- function(x, y, slope) {
+  b <- mean(y) - (slope * mean(x))
+  return(b)
+}
+
+# settings
+save_plots <- FALSE
+```
+
+# Data Import and Cleaning
+```{r}
+# import data
+data_path <- "../data/preprocessed/omnibus/omnibus_bl_corrected.csv"
+
+all_data <- fread(data_path)
+
+## Setup ##
+palette <- dict(
+  list(
+    "s30" = "#a30f15",
+    "d30" = "#07509b",
+    "s30-a" = "#fb6949",
+    "d30-a" = "#6aafd2",
+    "a-1" = "#4f1b31",
+    "a-2" = "#d6819b"
+  )
+)
+
+## Isolate experiments and summarize ##
+sr_30_all <- all_data %>%
+  filter(exp == "sr_30") %>%
+  mutate(unsigned_obj_angle = obj_angle_3cm_move * obj_shape_sign * -1) %>%
+  mutate(unsigned_hand_angle = hand_angle_3cm_move * obj_shape_sign * -1)
+
+sr_30_ppt_training <- sr_30_all %>%
+  filter(block_num == 16) %>%
+  mutate(trial_set = case_when(
+    trial_num <= 141 ~ 1,
+    trial_num >= 310 ~ 2,
+    TRUE ~ 100
+  ))
+
+sr_30_clamped <- sr_30_all %>%
+  filter(block_num > 16, type == "clamped") %>%
+  mutate(trained_obj_factor = case_when(
+    trainedfirst_obj_shape == obj_shape ~ "trained_obj",
+    TRUE ~ "untrained_obj"
+  )) %>%
+  mutate(trained_hand_factor = case_when(
+    hand == "r" ~ "trained_hand",
+    TRUE ~ "untrained_hand"
+  )) %>%
+  mutate(trained_obj_hand_factor = paste0(trained_obj_factor, "_", trained_hand_factor))
+
+### DR 30 ###
+dr_30_all <- all_data %>%
+  filter(exp == "dr_30") %>%
+  mutate(unsigned_obj_angle = obj_angle_3cm_move * obj_shape_sign * -1) %>%
+  mutate(unsigned_hand_angle = hand_angle_3cm_move * obj_shape_sign * -1)
+
+dr_30_ppt_training <- dr_30_all %>%
+  filter(block_num == 7) %>%
+  mutate(trial_set = case_when(
+    trial_num <= 78 ~ 1,
+    trial_num >= 247 ~ 2,
+    TRUE ~ 100
+  ))
+
+# note: blocks 8 and 11 are include clamps, 13 is exclude clamps
+dr_30_incl_clamp <- dr_30_all %>%
+  filter(block_num %in% c(8, 11))
+
+dr_30_excl_clamp <- dr_30_all %>%
+  filter(block_num %in% c(13, 14))
+
+# both experiment rbind
+both_ppt_training <- rbind(sr_30_ppt_training, dr_30_ppt_training)
+``` 
+
+# Single Learning
+## Training Phase Trial Sets - Reach Step
+```{r}
+sr_30_ppt_trial_sets <- sr_30_ppt_training %>%
+  filter(trial_set < 5) %>%
+  group_by(ppid, trial_set, targetAngle) %>%
+  summarise(
+    mean_trial_set_angle = mean(unsigned_hand_angle),
+    n()
+  )
+
+sr_30_ppt_trial_sets$ppid <- as.factor(sr_30_ppt_trial_sets$ppid)
+sr_30_ppt_trial_sets$trial_set <- as.factor(sr_30_ppt_trial_sets$trial_set)
+sr_30_ppt_trial_sets$targetAngle <- as.factor(sr_30_ppt_trial_sets$targetAngle)
+
+sr_30_trial_set_devs <- sr_30_ppt_trial_sets %>%
+  group_by(trial_set, targetAngle) %>%
+  summarise(
+    trial_set_mean = mean(mean_trial_set_angle),
+    trial_set_ci = vector_confint(mean_trial_set_angle)
+  )
+
+data_ppt <- sr_30_ppt_trial_sets
+data_trial_set <- sr_30_trial_set_devs
+
+# set up plot
+p <- data_trial_set %>%
+  ggplot(
+    aes(
+      x = trial_set, y = trial_set_mean
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(
+    x = NULL,
+    y = "Hand Angle (°)"
+  )
+
+# add horizontal lines
+p <- p +
+  geom_hline(
+    yintercept = c(0, 30), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "solid"
+  ) +
+  geom_hline(
+    yintercept = c(15), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "dashed"
+  )
+
+# add axis ticks
+p <- p +
+  scale_y_continuous(
+    limits = c(-15, 40),
+    breaks = c(0, 15, 30),
+    labels = c(0, 15, 30)
+  )
+
+# set font size to 11
+p <- p +
+  theme(text = element_text(size = 11))
+
+# add data points
+p <- p +
+  geom_beeswarm(
+    data = data_ppt,
+    aes(y = mean_trial_set_angle, colour = targetAngle),
+    alpha = 0.5,
+    size = 1
+  ) +
+  geom_linerange(aes(
+    ymin = trial_set_mean - trial_set_ci,
+    ymax = trial_set_mean + trial_set_ci
+  ), alpha = 0.1, lwd = 2) +
+  geom_point()
+
+# p <- p +
+#   scale_color_manual(
+#     values = c(
+#       "#555555", "#555555"
+#     )
+#   )
+
+p <- p +
+  scale_x_discrete(
+    labels = c(
+      "Init\nT", "Fin\nT"
+    )
+  )
+
+p
+```
+
+
+```{r}
+# ANOVA using afex (identical values to ez but ez doesn't remove missing rows)
+(temp_ANOVA <- aov_car(mean_trial_set_angle ~ targetAngle * trial_set + Error(ppid / (targetAngle * trial_set)), data_ppt))
+
+bf <- anovaBF(mean_trial_set_angle ~ targetAngle * trial_set + ppid,
+  data = data.frame(data_ppt), whichRandom = "ppid", progress = FALSE
+)
+print(bf)
+bayesfactor_inclusion(bf)
+```
+
+## Training Phase Trial Sets - Transport Step
+```{r}
+sr_30_ppt_trial_sets <- sr_30_ppt_training %>%
+  filter(trial_set < 5) %>%
+  group_by(ppid, trial_set, targetAngle) %>%
+  summarise(
+    mean_trial_set_angle = mean(unsigned_obj_angle)
+  )
+
+sr_30_ppt_trial_sets$ppid <- as.factor(sr_30_ppt_trial_sets$ppid)
+sr_30_ppt_trial_sets$trial_set <- as.factor(sr_30_ppt_trial_sets$trial_set)
+sr_30_ppt_trial_sets$targetAngle <- as.factor(sr_30_ppt_trial_sets$targetAngle)
+
+sr_30_trial_set_devs <- sr_30_ppt_trial_sets %>%
+  group_by(trial_set, targetAngle) %>%
+  summarise(
+    trial_set_mean = mean(mean_trial_set_angle),
+    trial_set_ci = vector_confint(mean_trial_set_angle)
+  )
+
+data_ppt <- sr_30_ppt_trial_sets
+data_trial_set <- sr_30_trial_set_devs
+
+# set up plot
+p <- data_trial_set %>%
+  ggplot(
+    aes(
+      x = trial_set, y = trial_set_mean
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(
+    x = NULL,
+    y = NULL
+  )
+
+# add horizontal lines
+p <- p +
+  geom_hline(
+    yintercept = c(0, 30), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "solid"
+  ) +
+  geom_hline(
+    yintercept = c(15), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "dashed"
+  )
+
+# add axis ticks
+p <- p +
+  scale_y_continuous(
+    limits = c(-15, 40),
+    breaks = c(0, 15, 30),
+    labels = c(0, 15, 30)
+  )
+
+# set font size to 11
+p <- p +
+  theme(text = element_text(size = 11))
+
+# add data points
+p <- p +
+  geom_beeswarm(
+    data = data_ppt,
+    aes(y = mean_trial_set_angle, colour = targetAngle),
+    alpha = 0.5,
+    size = 1
+  ) +
+  geom_linerange(aes(
+    ymin = trial_set_mean - trial_set_ci,
+    ymax = trial_set_mean + trial_set_ci
+  ), alpha = 0.1, lwd = 2) +
+  geom_point()
+
+# p <- p +
+#   scale_color_manual(
+#     values = c(
+#       palette$get("s30"), palette$get("s30")
+#     )
+#   )
+
+p <- p +
+  scale_x_discrete(
+    labels = c(
+      "Init\nT", "Fin\nT"
+    )
+  )
+
+p
+```
+
+
+```{r}
+# ANOVA using afex (identical values to ez but ez doesn't remove missing rows)
+(temp_ANOVA <- aov_car(mean_trial_set_angle ~ targetAngle * trial_set + Error(ppid / (targetAngle * trial_set)), data_ppt))
+
+bf <- anovaBF(mean_trial_set_angle ~ targetAngle * trial_set + ppid,
+  data = data.frame(data_ppt), whichRandom = "ppid", progress = FALSE
+)
+print(bf)
+bayesfactor_inclusion(bf)
+```
+
+No effects of target Angle (BFincl of 0.04 and 0.08)
+
+# Dual Learning Experiment
+## Training Phase Trial Sets - Reach Step
+```{r}
+dr_30_ppt_trial_sets <- dr_30_ppt_training %>%
+  filter(trial_set < 5) %>%
+  group_by(ppid, trial_set, targetAngle) %>%
+  summarise(
+    mean_trial_set_angle = mean(unsigned_hand_angle)
+  )
+
+dr_30_ppt_trial_sets$ppid <- as.factor(dr_30_ppt_trial_sets$ppid)
+dr_30_ppt_trial_sets$trial_set <- as.factor(dr_30_ppt_trial_sets$trial_set)
+dr_30_ppt_trial_sets$targetAngle <- as.factor(dr_30_ppt_trial_sets$targetAngle)
+
+dr_30_trial_set_devs <- dr_30_ppt_trial_sets %>%
+  group_by(trial_set, targetAngle) %>%
+  summarise(
+    trial_set_mean = mean(mean_trial_set_angle),
+    trial_set_ci = vector_confint(mean_trial_set_angle)
+  )
+
+data_ppt <- dr_30_ppt_trial_sets
+data_trial_set <- dr_30_trial_set_devs
+
+# set up plot
+p <- data_trial_set %>%
+  ggplot(
+    aes(
+      x = trial_set, y = trial_set_mean,
+      color = trial_set
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(
+    x = NULL,
+    y = "Hand Angle (°)"
+  )
+
+# add horizontal lines
+p <- p +
+  geom_hline(
+    yintercept = c(-30, 0, 30), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "solid"
+  ) +
+  geom_hline(
+    yintercept = c(-15, 15), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "dashed"
+  )
+
+# add axis ticks
+p <- p +
+  scale_y_continuous(
+    limits = c(-30, 30),
+    breaks = c(-30, -15, 0, 15, 30),
+    labels = c(-30, -15, 0, 15, 30)
+  )
+
+# set font size to 11
+p <- p +
+  theme(text = element_text(size = 11))
+
+# add data points
+p <- p +
+  geom_beeswarm(
+    data = data_ppt,
+    aes(y = mean_trial_set_angle, colour = targetAngle),
+    alpha = 0.5,
+    size = 1
+  ) +
+  geom_linerange(aes(
+    ymin = trial_set_mean - trial_set_ci,
+    ymax = trial_set_mean + trial_set_ci
+  ), alpha = 0.1, lwd = 2) +
+  geom_point()
+
+# p <- p +
+#   scale_color_manual(
+#     values = c(
+#       "#555555", "#555555"
+#     )
+#   )
+
+p <- p +
+  scale_x_discrete(
+    labels = c(
+      "Init", "Fin"
+    )
+  )
+
+p
+```
+
+```{r}
+# ANOVA using afex (identical values to ez but ez doesn't remove missing rows)
+(temp_ANOVA <- aov_car(mean_trial_set_angle ~ targetAngle * trial_set + Error(ppid / (targetAngle * trial_set)), data_ppt))
+
+bf <- anovaBF(mean_trial_set_angle ~ targetAngle * trial_set + ppid,
+  data = data.frame(data_ppt), whichRandom = "ppid", progress = FALSE
+)
+print(bf)
+bayesfactor_inclusion(bf)
+```
+## Training Phase Trial Sets - Transport Step
+```{r}
+dr_30_ppt_trial_sets <- dr_30_ppt_training %>%
+  filter(trial_set < 5) %>%
+  group_by(ppid, trial_set, targetAngle) %>%
+  summarise(
+    mean_trial_set_angle = mean(unsigned_obj_angle)
+  )
+
+dr_30_ppt_trial_sets$ppid <- as.factor(dr_30_ppt_trial_sets$ppid)
+dr_30_ppt_trial_sets$trial_set <- as.factor(dr_30_ppt_trial_sets$trial_set)
+dr_30_ppt_trial_sets$targetAngle <- as.factor(dr_30_ppt_trial_sets$targetAngle)
+
+dr_30_trial_set_devs <- dr_30_ppt_trial_sets %>%
+  group_by(trial_set, targetAngle) %>%
+  summarise(
+    trial_set_mean = mean(mean_trial_set_angle),
+    trial_set_ci = vector_confint(mean_trial_set_angle)
+  )
+
+data_ppt <- dr_30_ppt_trial_sets
+data_trial_set <- dr_30_trial_set_devs
+
+# set up plot
+p <- data_trial_set %>%
+  ggplot(
+    aes(
+      x = trial_set, y = trial_set_mean
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(
+    x = NULL,
+    y = NULL
+  )
+
+# add horizontal lines
+p <- p +
+  geom_hline(
+    yintercept = c(0, 30), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "solid"
+  ) +
+  geom_hline(
+    yintercept = c(15), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "dashed"
+  )
+
+# add axis ticks
+p <- p +
+  scale_y_continuous(
+    limits = c(-15, 40),
+    breaks = c(0, 15, 30),
+    labels = c(0, 15, 30)
+  )
+
+# set font size to 11
+p <- p +
+  theme(text = element_text(size = 11))
+
+# add data points
+p <- p +
+  geom_beeswarm(
+    data = data_ppt,
+    aes(y = mean_trial_set_angle, colour = targetAngle),
+    alpha = 0.5,
+    size = 1
+  ) +
+  geom_linerange(aes(
+    ymin = trial_set_mean - trial_set_ci,
+    ymax = trial_set_mean + trial_set_ci
+  ), alpha = 0.1, lwd = 2) +
+  geom_point()
+
+# p <- p +
+#   scale_color_manual(
+#     values = c(
+#       palette$get("s30"), palette$get("s30")
+#     )
+#   )
+
+p <- p +
+  scale_x_discrete(
+    labels = c(
+      "Init\nT", "Fin\nT"
+    )
+  )
+
+p
+```
+
+
+```{r}
+# ANOVA using afex (identical values to ez but ez doesn't remove missing rows)
+(temp_ANOVA <- aov_car(mean_trial_set_angle ~ targetAngle * trial_set + Error(ppid / (targetAngle * trial_set)), data_ppt))
+
+bf <- anovaBF(mean_trial_set_angle ~ targetAngle * trial_set + ppid,
+  data = data.frame(data_ppt), whichRandom = "ppid", progress = FALSE
+)
+print(bf)
+bayesfactor_inclusion(bf)
+```
+
+
+No effect of target angle (BFinc = 0.07, 0.14)
+
+
+## Clamped Tasks
+### Not excluding strategy
+```{r}
+dr_30_ppt_incl_clamped <- dr_30_incl_clamp %>%
+  group_by(ppid, obj_shape_sign, targetAngle) %>%
+  summarise(
+    ppt_mean_angle = mean(obj_angle_3cm_move),
+    ppt_ci_angle = vector_confint(obj_angle_3cm_move)
+  )
+
+dr_30_ppt_incl_clamped$ppid <- factor(dr_30_ppt_incl_clamped$ppid)
+dr_30_ppt_incl_clamped$obj_shape_sign <- factor(dr_30_ppt_incl_clamped$obj_shape_sign)
+dr_30_ppt_incl_clamped$targetAngle <- factor(dr_30_ppt_incl_clamped$targetAngle)
+
+dr_30_exp_incl_clamped <- dr_30_ppt_incl_clamped %>%
+  group_by(obj_shape_sign, targetAngle) %>%
+  summarise(
+    mean_angle = mean(ppt_mean_angle),
+    ci_angle = vector_confint(ppt_mean_angle)
+  )
+
+data_ppt <- dr_30_ppt_incl_clamped
+data_exp <- dr_30_exp_incl_clamped
+
+# set up plot
+p <- data_exp %>%
+  ggplot(
+    aes(
+      x = obj_shape_sign,
+      y = mean_angle,
+      color = obj_shape_sign,
+      shape = targetAngle
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(
+    x = NULL,
+    y = NULL
+  )
+
+# add horizontal lines
+p <- p +
+  geom_hline(
+    yintercept = c(-30, 0, 30), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "solid"
+  ) +
+  geom_hline(
+    yintercept = c(-15, 15), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "dashed"
+  )
+
+# add axis ticks
+p <- p +
+  scale_y_continuous(
+    limits = c(-30, 30),
+    breaks = c(-30, -15, 0, 15, 30),
+    labels = c(-30, -15, 0, 15, 30)
+  )
+
+p <- p +
+  scale_x_discrete(
+    labels = c(
+      "CW", "CCW"
+    )
+  )
+
+# set font size to 11
+p <- p +
+  theme(text = element_text(size = 11))
+
+# add data points
+p <- p +
+  geom_beeswarm(
+    data = data_ppt,
+    aes(
+      x = obj_shape_sign,
+      y = ppt_mean_angle,
+      color = obj_shape_sign,
+      shape = targetAngle
+    ),
+    size = 1,
+    alpha = 0.2
+  ) +
+  geom_linerange(
+    aes(
+      ymin = mean_angle - ci_angle,
+      ymax = mean_angle + ci_angle
+    ),
+    alpha = 0.5, lwd = 2
+  ) +
+  geom_point()
+
+p <- p +
+  scale_color_manual(
+    values = c(palette$get("a-1"), palette$get("a-2"))
+  )
+
+p
+```
+
+```{r}
+# summary statistics
+data_ppt %>%
+  group_by(obj_shape_sign, targetAngle) %>%
+  summarise(
+    mean = mean(ppt_mean_angle),
+    ci = vector_confint(ppt_mean_angle),
+    n = n()
+  )
+```
+
+```{r}
+# ANOVA using afex (identical values to ez but ez doesn't remove missing rows)
+(temp_ANOVA <- aov_car(ppt_mean_angle ~ targetAngle * obj_shape_sign + Error(ppid / (targetAngle * obj_shape_sign)), data_ppt))
+
+bf <- anovaBF(ppt_mean_angle ~ targetAngle * obj_shape_sign + ppid,
+  data = data.frame(data_ppt), whichRandom = "ppid", progress = FALSE
+)
+print(bf)
+bayesfactor_inclusion(bf)
+```
+
+
+### Exclude strategy reaches
+```{r}
+dr_30_ppt_excl_clamped <- dr_30_excl_clamp %>%
+  group_by(ppid, obj_shape_sign, targetAngle) %>%
+  summarise(
+    ppt_mean_angle = mean(obj_angle_3cm_move),
+    ppt_ci_angle = vector_confint(obj_angle_3cm_move)
+  )
+
+dr_30_ppt_excl_clamped$ppid <- factor(dr_30_ppt_excl_clamped$ppid)
+dr_30_ppt_excl_clamped$obj_shape_sign <- factor(dr_30_ppt_excl_clamped$obj_shape_sign)
+dr_30_ppt_excl_clamped$targetAngle <- factor(dr_30_ppt_excl_clamped$targetAngle)
+
+dr_30_exp_excl_clamped <- dr_30_ppt_excl_clamped %>%
+  group_by(obj_shape_sign, targetAngle) %>%
+  summarise(
+    mean_angle = mean(ppt_mean_angle),
+    ci_angle = vector_confint(ppt_mean_angle)
+  )
+
+data_ppt <- dr_30_ppt_excl_clamped
+data_exp <- dr_30_exp_excl_clamped
+
+# set up plot
+p <- data_exp %>%
+  ggplot(
+    aes(
+      x = obj_shape_sign,
+      y = mean_angle,
+      color = obj_shape_sign,
+      shape = targetAngle
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(
+    x = NULL,
+    y = NULL
+  )
+
+# add horizontal lines
+p <- p +
+  geom_hline(
+    yintercept = c(-30, 0, 30), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "solid"
+  ) +
+  geom_hline(
+    yintercept = c(-15, 15), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "dashed"
+  )
+
+# add axis ticks
+p <- p +
+  scale_y_continuous(
+    limits = c(-30, 30),
+    breaks = c(-30, -15, 0, 15, 30),
+    labels = c(-30, -15, 0, 15, 30)
+  )
+
+p <- p +
+  scale_x_discrete(
+    labels = c(
+      "CW", "CCW"
+    )
+  )
+
+# set font size to 11
+p <- p +
+  theme(text = element_text(size = 11))
+
+# add data points
+p <- p +
+  geom_beeswarm(
+    data = data_ppt,
+    aes(
+      x = obj_shape_sign,
+      y = ppt_mean_angle,
+      color = obj_shape_sign,
+      shape = targetAngle
+    ),
+    size = 1,
+    alpha = 0.2
+  ) +
+  geom_linerange(
+    aes(
+      ymin = mean_angle - ci_angle,
+      ymax = mean_angle + ci_angle
+    ),
+    alpha = 0.5, lwd = 2
+  ) +
+  geom_point()
+
+p <- p +
+  scale_color_manual(
+    values = c(palette$get("a-1"), palette$get("a-2"))
+  )
+
+p
+```
+
+```{r}
+# summary statistics
+data_ppt %>%
+  group_by(obj_shape_sign, targetAngle) %>%
+  summarise(
+    mean = mean(ppt_mean_angle),
+    ci = vector_confint(ppt_mean_angle),
+    n = n()
+  )
+```
+
+```{r}
+# ANOVA using afex (identical values to ez but ez doesn't remove missing rows)
+(temp_ANOVA <- aov_car(ppt_mean_angle ~ targetAngle * obj_shape_sign + Error(ppid / (targetAngle * obj_shape_sign)), data_ppt))
+
+bf <- anovaBF(ppt_mean_angle ~ targetAngle * obj_shape_sign + ppid,
+  data = data.frame(data_ppt), whichRandom = "ppid", progress = FALSE
+)
+print(bf)
+bayesfactor_inclusion(bf)
+```
+```{r}
+# posthoc tests
+(m1 <- emmeans(temp_ANOVA, ~ targetAngle * obj_shape_sign))
+pairs(m1)
+```

@@ -78,11 +78,11 @@ make_bl_corrected_omnibus <- function() {
 
   # label baseline blocks
   omnibus_df$baseline_block <- case_when(
-    omnibus_df$exp == "sr_30" &
+    (omnibus_df$exp == "sr_30") &
       omnibus_df$block_num %in% baseline_blocks$get("sr_30") ~ TRUE,
-    omnibus_df$exp == "dr_30" &
+    (omnibus_df$exp == "dr_30") &
       omnibus_df$block_num %in% baseline_blocks$get("dr_30") ~ TRUE,
-    omnibus_df$exp == "dr_60" &
+    (omnibus_df$exp == "dr_60") &
       omnibus_df$block_num %in% baseline_blocks$get("dr_60") ~ TRUE,
     TRUE ~ FALSE
   )
@@ -98,7 +98,7 @@ make_bl_corrected_omnibus <- function() {
     filter(abs(mean(hand_angle_3cm_move) - hand_angle_3cm_move) < 3 * abs(sd(hand_angle_3cm_move))) %>%
     filter(abs(mean(obj_angle_3cm_move) - obj_angle_3cm_move) < 3 * abs(sd(obj_angle_3cm_move)))
 
-  # samarise baseline df
+  # summarise baseline df
   bl_df_summary <- baseline_df %>%
     group_by(exp, ppid, type, hand) %>%
     summarise(
