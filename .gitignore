@@ -42,5 +42,5 @@ vignettes/*.pdf
 data/
 plots/
 
-# Any notebook html files
-*.html
+# Any notebook html files in the notebooks/ directory
+notebooks/*.html
