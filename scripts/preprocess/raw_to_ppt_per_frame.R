@@ -90,7 +90,8 @@ make_per_frame_files <- function(exp_index) {
     
     # non equi join using data table (not sure dplyr can do this)
     tracker_holder_df <- tracker_holder_df[trial_df, on = .(time >= start_time, time < end_time), 
-                           nomatch = 0, .(pos_x, pos_y, pos_z, x.time, 
+                           nomatch = 0, .(pos_x, pos_y, pos_z, 
+                                          rot_x, rot_y, rot_z, x.time, 
                                           start_time, end_time, step_time, 
                                           trial_num, block_num, trial_num_in_block, targetAngle, cursor_rotation,
                                           type, hand, obj_shape, ppid)]
@@ -120,6 +121,9 @@ make_per_frame_files <- function(exp_index) {
       mutate(first_pos_x = first(pos_x),
              first_pos_z = first(pos_z),
              first_time = first(x.time),
+             rot_x_at_pickup = last(rot_x),
+             rot_y_at_pickup = last(rot_y),
+             rot_z_at_pickup = last(rot_z),
              pos_x = pos_x - first_pos_x,
              pos_z = pos_z - first_pos_z,
              x.time = x.time - first_time,

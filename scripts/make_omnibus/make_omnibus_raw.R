@@ -76,6 +76,9 @@ make_one_omnibus_file <- function(directory_index, ppt_list) {
       hand_time_reach = first(time_reach),
       hand_time_total_move = first(time_total_move),
       hand_angle_3cm_move = first(angle_3cm_move),
+      hand_rot_x_at_pickup = first(rot_x_at_pickup),
+      hand_rot_y_at_pickup = first(rot_y_at_pickup),
+      hand_rot_z_at_pickup = first(rot_z_at_pickup),
     )
 
   trial_df <- trial_df %>%

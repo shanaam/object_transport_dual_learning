@@ -10,7 +10,7 @@ output:
     df_print: paged
 ---
 
-```{r setup, include=FALSE, warning=FALSE}
+```{r include=FALSE, warning=FALSE}
 rm(list = ls()) # clean environment
 
 source("../src/helper_funcs.R")
@@ -29,6 +29,8 @@ library(bayestestR)
 
 library(Reach) # from github: thartbm/Reach
 library(dabestr)
+
+library(circular) # for rotations
 
 # Helper functions
 ##### Helper functions #####
@@ -785,3 +787,238 @@ bayesfactor_inclusion(bf)
 (m1 <- emmeans(temp_ANOVA, ~ targetAngle * obj_shape_sign))
 pairs(m1)
 ```
+
+# Hand Rotations
+```{r}
+# helper function
+average_circle <- function(num_vec) {
+  # Convert vectors to radians
+  vectors_rad <- lapply(num_vec, function(v) rad(v))
+
+  # Calculate average for each dimension
+  circular_mean <- mean(circular(vectors_rad), na.rm = TRUE)
+
+  # Convert the average vector back to degrees
+  deg(circular_mean)
+}
+
+# isolate all trials where baseline_block is TRUE
+dr_30_baseline <- dr_30_all %>%
+  filter(baseline_block == TRUE)
+
+# make ppid, obj_shape, targetAngle factors
+dr_30_baseline$ppid <- factor(dr_30_baseline$ppid)
+dr_30_baseline$obj_shape <- factor(dr_30_baseline$obj_shape)
+dr_30_baseline$targetAngle <- factor(dr_30_baseline$targetAngle)
+
+rot_at_pickup_summary <- dr_30_baseline %>%
+  group_by(ppid, obj_shape, targetAngle) %>%
+  summarise(
+    n()
+  )
+
+# add empty columns
+rot_at_pickup_summary$mean_rot_x_at_pickup <- NA
+rot_at_pickup_summary$ci_rot_x_at_pickup <- NA
+rot_at_pickup_summary$mean_rot_y_at_pickup <- NA
+rot_at_pickup_summary$ci_rot_y_at_pickup <- NA
+rot_at_pickup_summary$mean_rot_z_at_pickup <- NA
+rot_at_pickup_summary$ci_rot_z_at_pickup <- NA
+
+# loop through rows of rot_at_pickup_summary and calculate average rotation
+for (i in 1:nrow(rot_at_pickup_summary)) {
+  # get ppid, obj_shape, targetAngle
+  row_ppid <- rot_at_pickup_summary$ppid[i]
+  row_obj_shape <- rot_at_pickup_summary$obj_shape[i]
+  row_targetAngle <- rot_at_pickup_summary$targetAngle[i]
+
+  # get all rows for this ppid, obj_shape, targetAngle
+  temp_data <- dr_30_baseline %>%
+    filter(ppid == row_ppid, obj_shape == row_obj_shape, targetAngle == row_targetAngle)
+
+  # get all hand_rot_x_at_pickup values
+  rot_x <- temp_data$hand_rot_x_at_pickup
+
+  # get all hand_rot_y_at_pickup values
+  rot_y <- temp_data$hand_rot_y_at_pickup
+
+  # get all hand_rot_z_at_pickup values
+  rot_z <- temp_data$hand_rot_z_at_pickup
+
+  # add to rot_at_pickup_summary
+  rot_at_pickup_summary$mean_rot_x_at_pickup[i] <- average_circle(rot_x)
+  rot_at_pickup_summary$ci_rot_x_at_pickup[i] <- vector_confint(rot_x)
+  rot_at_pickup_summary$mean_rot_y_at_pickup[i] <- average_circle(rot_y)
+  rot_at_pickup_summary$ci_rot_y_at_pickup[i] <- vector_confint(rot_y)
+  rot_at_pickup_summary$mean_rot_z_at_pickup[i] <- average_circle(rot_z)
+  rot_at_pickup_summary$ci_rot_z_at_pickup[i] <- vector_confint(rot_z)
+}
+
+# summarize
+rot_at_pickup_summary2 <- rot_at_pickup_summary %>%
+  group_by(obj_shape, targetAngle) %>%
+  summarise(
+    mean_rot_x_at_pickup2 = mean(mean_rot_x_at_pickup),
+    ci_rot_x_at_pickup2 = vector_confint(mean_rot_x_at_pickup),
+    mean_rot_y_at_pickup2 = mean(mean_rot_y_at_pickup),
+    ci_rot_y_at_pickup2 = vector_confint(mean_rot_y_at_pickup),
+    mean_rot_z_at_pickup2 = mean(mean_rot_z_at_pickup),
+    ci_rot_z_at_pickup2 = vector_confint(mean_rot_z_at_pickup)
+  )
+```
+
+```{r}
+# set up plot
+p <- rot_at_pickup_summary %>%
+  ggplot(
+    aes(
+      x = obj_shape,
+      y = mean_rot_x_at_pickup,
+      color = targetAngle
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(
+    x = NULL,
+    y = NULL
+  ) +
+  # add data points
+  geom_beeswarm(
+    aes(
+      x = obj_shape,
+      y = mean_rot_x_at_pickup,
+      color = targetAngle
+    ),
+    size = 1,
+    alpha = 0.2
+  ) +
+  geom_linerange(
+    data = rot_at_pickup_summary2,
+    aes(
+      y = mean_rot_x_at_pickup2,
+      ymin = mean_rot_x_at_pickup2 - ci_rot_x_at_pickup2,
+      ymax = mean_rot_x_at_pickup2 + ci_rot_x_at_pickup2
+    ),
+    alpha = 0.5, lwd = 2
+  ) +
+  geom_point(
+    data = rot_at_pickup_summary2,
+    aes(
+      x = obj_shape,
+      y = mean_rot_x_at_pickup2,
+      color = targetAngle
+    )
+  )
+
+# same as above but add y in a different plot
+q <- rot_at_pickup_summary %>%
+  ggplot(
+    aes(
+      x = obj_shape,
+      y = mean_rot_y_at_pickup,
+      color = targetAngle
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(
+    x = NULL,
+    y = NULL
+  ) +
+  # add data points
+  geom_beeswarm(
+    aes(
+      x = obj_shape,
+      y = mean_rot_y_at_pickup,
+      color = targetAngle
+    ),
+    size = 1,
+    alpha = 0.2
+  ) +
+  geom_linerange(
+    data = rot_at_pickup_summary2,
+    aes(
+      y = mean_rot_y_at_pickup2,
+      ymin = mean_rot_y_at_pickup2 - ci_rot_y_at_pickup2,
+      ymax = mean_rot_y_at_pickup2 + ci_rot_y_at_pickup2
+    ),
+    alpha = 0.5, lwd = 2
+  ) +
+  geom_point(
+    data = rot_at_pickup_summary2,
+    aes(
+      x = obj_shape,
+      y = mean_rot_y_at_pickup2,
+      color = targetAngle
+    )
+  )
+
+# same as above but add z in a different plot
+r <- rot_at_pickup_summary %>%
+  ggplot(
+    aes(
+      x = obj_shape,
+      y = mean_rot_z_at_pickup,
+      color = targetAngle
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(
+    x = NULL,
+    y = NULL
+  ) +
+  # add data points
+  geom_beeswarm(
+    aes(
+      x = obj_shape,
+      y = mean_rot_z_at_pickup,
+      color = targetAngle
+    ),
+    size = 1,
+    alpha = 0.2
+  ) +
+  geom_linerange(
+    data = rot_at_pickup_summary2,
+    aes(
+      y = mean_rot_z_at_pickup2,
+      ymin = mean_rot_z_at_pickup2 - ci_rot_z_at_pickup2,
+      ymax = mean_rot_z_at_pickup2 + ci_rot_z_at_pickup2
+    ),
+    alpha = 0.5, lwd = 2
+  ) +
+  geom_point(
+    data = rot_at_pickup_summary2,
+    aes(
+      x = obj_shape,
+      y = mean_rot_z_at_pickup2,
+      color = targetAngle
+    )
+  )
+
+# plots
+p
+q
+r
+```
+```{r}
+# ANOVA using afex (identical values to ez but ez doesn't remove missing rows)
+(temp_ANOVA <- aov_car(mean_rot_x_at_pickup ~ obj_shape * targetAngle + Error(ppid / (obj_shape * targetAngle)), rot_at_pickup_summary))
+
+bf <- anovaBF(mean_rot_x_at_pickup ~ obj_shape * targetAngle + ppid,
+  data = data.frame(rot_at_pickup_summary), whichRandom = "ppid", progress = FALSE
+)
+print(bf)
+bayesfactor_inclusion(bf)
+
+# posthoc tests
+(m1 <- emmeans(temp_ANOVA, ~ obj_shape * targetAngle))
+pairs(m1)
+```
+
+
+```{r}
+# Fin
+```
+
