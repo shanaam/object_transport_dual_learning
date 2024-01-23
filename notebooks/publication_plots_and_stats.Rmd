@@ -8,7 +8,7 @@ output:
     toc_float: true
     number_sections: true
     df_print: paged
-    
+    code_folding: hide
 ---
 
 ```{r setup, include=FALSE, warning=FALSE}
@@ -542,6 +542,44 @@ if (save_plots) {
   
 p
 ```
+```{r}
+# summary statistics
+data_ppt %>% 
+  group_by(trial_set) %>% 
+  summarise(
+    mean = mean(mean_trial_set_angle),
+    ci = vector_confint(mean_trial_set_angle),
+    n = n()
+  )
+```
+
+For Bayes Factors, we perform the “JZS” t test described by Rouder, Speckman, Sun, Morey, and Iverson (2009)
+
+```{r}
+# sample size is >30, no need to test for normality
+# Note: one sample t-test on the differences is EQUIVALENT to a paired t-test
+
+# Comparison stats
+# paired t-test
+group1 <- data_ppt %>% 
+  filter(trial_set == "1") %>% 
+  pull(mean_trial_set_angle)
+
+group2 <- data_ppt %>%
+  filter(trial_set == "2") %>% 
+  pull(mean_trial_set_angle)
+
+diffs <- group2 - group1
+
+t.test(diffs)
+
+# Effect size
+cohen.d(group1, group2)
+
+# Bayes Factor
+bf <- ttestBF(x = diffs)
+bf
+```
 
 ## Training Phase Trial Sets - Transport Step
 ```{r}
@@ -642,46 +680,6 @@ if (save_plots) {
   
 p
 ```
-
-```{r}
-# summary statistics
-data_ppt %>% 
-  group_by(trial_set) %>% 
-  summarise(
-    mean = mean(mean_trial_set_angle),
-    ci = vector_confint(mean_trial_set_angle),
-    n = n()
-  )
-```
-
-For Bayes Factors, we perform the “JZS” t test described by Rouder, Speckman, Sun, Morey, and Iverson (2009)
-
-```{r}
-# sample size is >30, no need to test for normality
-# Note: one sample t-test on the differences is EQUIVALENT to a paired t-test
-
-# Comparison stats
-# paired t-test
-group1 <- data_ppt %>% 
-  filter(trial_set == "1") %>% 
-  pull(mean_trial_set_angle)
-
-group2 <- data_ppt %>%
-  filter(trial_set == "2") %>% 
-  pull(mean_trial_set_angle)
-
-diffs <- group2 - group1
-
-t.test(diffs)
-
-# Effect size
-cohen.d(group1, group2)
-
-# Bayes Factor
-bf <- ttestBF(x = diffs)
-bf
-```
-
 
 ```{r}
 # summary statistics
@@ -1122,7 +1120,7 @@ p <- p +
 # add axis ticks
 p <- p +
   scale_y_continuous(
-    limits = c(-30, 30),
+    limits = c(-33, 30),
     breaks = c(-30, -15, 0, 15, 30),
     labels = c(-30, -15, 0, 15, 30)
   )
@@ -1264,7 +1262,7 @@ p <- p +
 # add axis ticks
 p <- p +
   scale_y_continuous(
-    limits = c(-30, 30),
+    limits = c(-33, 30),
     breaks = c(-30, -15, 0, 15, 30),
     labels = c(-30, -15, 0, 15, 30)
   )
@@ -1409,7 +1407,7 @@ p <- p +
 # add axis ticks
 p <- p +
   scale_y_continuous(
-    limits = c(-30, 30),
+    limits = c(-33, 30),
     breaks = c(-30, -15, 0, 15, 30),
     labels = c(-30, -15, 0, 15, 30)
   )
@@ -1495,17 +1493,6 @@ ttestBF(x = diffs)
 ```
 
 
-```{r}
-dr_30_ppt_incl_clamped %>%
-  group_by(obj_shape_sign) %>%
-  summarise(
-    mean = mean(ppt_mean_angle),
-    sd = sd(ppt_mean_angle),
-    ci = vector_confint(ppt_mean_angle),
-    n = n()
-  )
-```
-
 ### Exclude-strategy reaches
 ```{r}
 dr_30_ppt_excl_clamped <- dr_30_excl_clamp %>%
@@ -1559,7 +1546,7 @@ p <- p +
 # add axis ticks
 p <- p +
   scale_y_continuous(
-    limits = c(-30, 30),
+    limits = c(-33, 30),
     breaks = c(-30, -15, 0, 15, 30),
     labels = c(-30, -15, 0, 15, 30)
   )

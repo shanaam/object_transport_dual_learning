@@ -8,6 +8,7 @@ output:
     toc_float: true
     number_sections: true
     df_print: paged
+    code_folding: hide
 ---
 
 ```{r include=FALSE, warning=FALSE}
@@ -31,6 +32,7 @@ library(Reach) # from github: thartbm/Reach
 library(dabestr)
 
 library(circular) # for rotations
+library(plotly)
 
 # Helper functions
 ##### Helper functions #####
@@ -50,7 +52,7 @@ save_plots <- FALSE
 # Data Import and Cleaning
 ```{r}
 # import data
-data_path <- "../data/preprocessed/omnibus/omnibus_bl_corrected.csv"
+data_path <- "../data/preprocessed/omnibus/omnibus_bl_corrected_pickups.csv"
 
 all_data <- fread(data_path)
 
@@ -116,6 +118,224 @@ dr_30_excl_clamp <- dr_30_all %>%
 # both experiment rbind
 both_ppt_training <- rbind(sr_30_ppt_training, dr_30_ppt_training)
 ``` 
+
+# Dual Learning Diffs
+
+## Including Strategy
+```{r}
+dr_30_ppt_incl_clamped <- dr_30_incl_clamp %>%
+  group_by(ppid, obj_shape_sign) %>%
+  summarise(
+    ppt_mean_angle = mean(obj_angle_3cm_move),
+    ppt_ci_angle = vector_confint(obj_angle_3cm_move)
+  )
+
+dr_30_ppt_incl_clamped$obj_shape_sign <- factor(
+  dr_30_ppt_incl_clamped$obj_shape_sign
+)
+
+dr_30_exp_incl_clamped <- dr_30_ppt_incl_clamped %>%
+  group_by(obj_shape_sign) %>%
+  summarise(
+    mean_angle = mean(ppt_mean_angle),
+    ci_angle = vector_confint(ppt_mean_angle)
+  )
+
+# add a difference column
+dr_30_ppt_incl_clamped <- dr_30_ppt_incl_clamped %>%
+  group_by(ppid) %>%
+  mutate(
+    diff = ppt_mean_angle - lag(ppt_mean_angle)
+  )
+
+# plot the trial sets
+p <- dr_30_ppt_incl_clamped %>%
+  ggplot(
+    aes(
+      x = obj_shape_sign, y = ppt_mean_angle,
+      colour = ppid
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(
+    x = "Trial Set",
+    y = "Hand Angle (°)"
+  ) +
+  geom_point() +
+  geom_line(aes(group = ppid), alpha = 0.2)
+
+ggplotly(p)
+
+# plot the diffs
+p <- dr_30_ppt_incl_clamped %>%
+  filter(obj_shape_sign == 1) %>%
+  ggplot(
+    aes(
+      x = obj_shape_sign,
+      colour = ppid
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  geom_hline(
+    yintercept = c(0), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "dashed"
+  ) +
+  # add data
+  geom_beeswarm(
+    aes(
+      y = diff
+    ),
+    alpha = 0.5,
+    size = 1
+  )
+
+ggplotly(p)
+```
+
+Removing ppt "dr_30_2"
+```{r}
+data_ppt <- dr_30_ppt_incl_clamped %>%
+  filter(ppid != "dr_30_2")
+
+# summary statistics
+data_ppt %>% 
+  group_by(obj_shape_sign) %>% 
+  summarise(
+    mean = mean(ppt_mean_angle),
+    ci = vector_confint(ppt_mean_angle),
+    n = n()
+  )
+```
+```{r}
+# Comparison stats
+# paired t-test
+group1 <- data_ppt %>% 
+  filter(obj_shape_sign == "-1") %>% 
+  pull(ppt_mean_angle)
+
+group2 <- data_ppt %>%
+  filter(obj_shape_sign == "1") %>% 
+  pull(ppt_mean_angle)
+
+diffs <- group2 - group1
+t.test(diffs)
+
+# Effect size
+cohen.d(group1, group2)
+
+# Bayes factor
+ttestBF(x = diffs)
+```
+
+## Excluding strategy
+```{r}
+dr_30_ppt_excl_clamped <- dr_30_excl_clamp %>%
+  group_by(ppid, obj_shape_sign) %>%
+  summarise(
+    ppt_mean_angle = mean(obj_angle_3cm_move),
+    ppt_ci_angle = vector_confint(obj_angle_3cm_move)
+  )
+
+dr_30_ppt_excl_clamped$obj_shape_sign <- factor(
+  dr_30_ppt_excl_clamped$obj_shape_sign
+)
+
+dr_30_exp_excl_clamped <- dr_30_ppt_excl_clamped %>%
+  group_by(obj_shape_sign) %>%
+  summarise(
+    mean_angle = mean(ppt_mean_angle),
+    ci_angle = vector_confint(ppt_mean_angle)
+  )
+
+# add a difference column
+dr_30_ppt_excl_clamped <- dr_30_ppt_excl_clamped %>%
+  group_by(ppid) %>%
+  mutate(
+    diff = ppt_mean_angle - lag(ppt_mean_angle)
+  )
+
+# plot the trial sets
+p <- dr_30_ppt_excl_clamped %>%
+  ggplot(
+    aes(
+      x = obj_shape_sign, y = ppt_mean_angle,
+      colour = ppid
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  labs(
+    x = "Trial Set",
+    y = "Hand Angle (°)"
+  ) +
+  geom_point() +
+  geom_line(aes(group = ppid), alpha = 0.2)
+
+ggplotly(p)
+
+# plot the diffs
+p <- dr_30_ppt_excl_clamped %>%
+  filter(obj_shape_sign == 1) %>%
+  ggplot(
+    aes(
+      x = obj_shape_sign,
+      colour = ppid
+    )
+  ) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  geom_hline(
+    yintercept = c(0), linewidth = 0.4,
+    colour = "#CCCCCC", linetype = "dashed"
+  ) +
+  # add data
+  geom_beeswarm(
+    aes(
+      y = diff
+    ),
+    alpha = 0.5,
+    size = 1
+  )
+
+ggplotly(p)
+```
+
+Removing ppt "dr_30_2"
+```{r}
+data_ppt <- dr_30_ppt_excl_clamped %>%
+  filter(ppid != "dr_30_2")
+
+# summary statistics
+data_ppt %>% 
+  group_by(obj_shape_sign) %>% 
+  summarise(
+    mean = mean(ppt_mean_angle),
+    ci = vector_confint(ppt_mean_angle),
+    n = n()
+  )
+```
+```{r}
+# Comparison stats
+# paired t-test
+group1 <- data_ppt %>% 
+  filter(obj_shape_sign == "-1") %>% 
+  pull(ppt_mean_angle)
+
+group2 <- data_ppt %>%
+  filter(obj_shape_sign == "1") %>% 
+  pull(ppt_mean_angle)
+
+diffs <- group2 - group1
+t.test(diffs)
+
+# Effect size
+cohen.d(group1, group2)
+
+# Bayes factor
+ttestBF(x = diffs)
+```
 
 # Single Learning
 ## Training Phase Trial Sets - Reach Step
